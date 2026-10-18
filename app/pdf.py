@@ -36,7 +36,7 @@ def _tabla_miembros(lineas, stats, estados, st):
     p = lambda txt: Paragraph(txt, st["celda"])
     # «impactos_totales» → «IMPACTOS TOTALES»: así parte por palabras y no a mitad
     etiquetas_stats = [s.replace("_", " ").upper() for s in stats]
-    cab = ["Nº", "Nombre", "Tipo", "Cant."] + etiquetas_stats + \
+    cab = ["Nº", "Nombre", "Tipo", "Categoría", "Cant."] + etiquetas_stats + \
           ["Armamento", "Exp.", "Coste", "Estado", "Notas"]
     data = [[Paragraph(f"<b>{_esc(c)}</b>", st["cab"]) for c in cab]]
     for ln in lineas:
@@ -49,7 +49,7 @@ def _tabla_miembros(lineas, stats, estados, st):
             notas += f"<br/><font size=6 color='#555555'>{_esc(ln['banda_lin_observaciones'])}</font>"
         data.append(
             [str(ln["banda_lin_orden"]), p(_esc(ln["banda_lin_nombre"])), p(_esc(ln["banda_lin_subtipo"])),
-             str(ln["banda_lin_cantidad"])]
+             p(_esc(ln["banda_lin_categoria"] or "")), str(ln["banda_lin_cantidad"])]
             + [_esc(valores.get(s, "")) for s in stats]
             + [p(_armamento(ln["banda_lin_armamento"])), str(ln["banda_lin_experiencia"] or 0), p(coste),
                _esc(estados.get(ln["banda_lin_estado"] or 0, "")), p(notas)])
@@ -57,9 +57,9 @@ def _tabla_miembros(lineas, stats, estados, st):
     # Anchos: columnas fijas + una por stat (según su palabra más larga); el resto
     # se reparte entre Armamento y Notas, que nunca bajan de MIN_TEXTO entre las dos.
     ancho_total = landscape(A4)[0] - 20 * mm
-    fijas = {"orden": 9, "nombre": 30, "tipo": 24, "cant": 11, "exp": 10, "coste": 17, "estado": 18}
+    fijas = {"orden": 9, "nombre": 28, "tipo": 20, "categoria": 16, "cant": 10, "exp": 10, "coste": 15, "estado": 16}
     libre = ancho_total - sum(fijas.values()) * mm
-    MIN_TEXTO = 55 * mm
+    MIN_TEXTO = 45 * mm
     # Ancho real de la palabra más larga (Helvetica-Bold, cuerpo de la cabecera) + márgenes
     anchos_stats = [max(9 * mm, max(stringWidth(w, "Helvetica-Bold", st["cab"].fontSize)
                                     for w in e.split()) + 2 * PADDING + 2)
@@ -68,7 +68,8 @@ def _tabla_miembros(lineas, stats, estados, st):
         factor = (libre - MIN_TEXTO) / sum(anchos_stats)
         anchos_stats = [a * factor for a in anchos_stats]
     resto = libre - sum(anchos_stats)
-    anchos = ([fijas["orden"] * mm, fijas["nombre"] * mm, fijas["tipo"] * mm, fijas["cant"] * mm]
+    anchos = ([fijas["orden"] * mm, fijas["nombre"] * mm, fijas["tipo"] * mm, fijas["categoria"] * mm,
+               fijas["cant"] * mm]
               + anchos_stats
               + [resto * 0.55, fijas["exp"] * mm, fijas["coste"] * mm, fijas["estado"] * mm, resto * 0.45])
 
@@ -81,8 +82,8 @@ def _tabla_miembros(lineas, stats, estados, st):
         ("BACKGROUND", (0, 0), (-1, 0), GRIS_OSCURO),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 1), (0, -1), "CENTER"),
-        ("ALIGN", (3, 1), (3 + n, -1), "CENTER"),        # cantidad y stats
-        ("ALIGN", (5 + n, 1), (5 + n, -1), "CENTER"),    # experiencia
+        ("ALIGN", (4, 1), (4 + n, -1), "CENTER"),        # cantidad y stats
+        ("ALIGN", (6 + n, 1), (6 + n, -1), "CENTER"),    # experiencia
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, FONDO_ALTERNO]),
         ("LEFTPADDING", (0, 0), (-1, -1), PADDING),
         ("RIGHTPADDING", (0, 0), (-1, -1), PADDING),

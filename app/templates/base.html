@@ -77,6 +77,25 @@
       if (c) { c.closest('.modal').classList.remove('open'); return; }
       if (e.target.classList && e.target.classList.contains('modal')) e.target.classList.remove('open');
     });
+    // Doble clic: cada formulario POST se envía una sola vez. Los botones se desactivan
+    // después de enviar (setTimeout) para no perder el valor del botón pulsado (p. ej. accion=…).
+    document.addEventListener('submit', function(e){
+      var f = e.target;
+      if ((f.method || '').toLowerCase() !== 'post' || e.defaultPrevented) return;
+      if (f.dataset.enviando) { e.preventDefault(); return; }
+      f.dataset.enviando = '1';
+      setTimeout(function(){
+        f.querySelectorAll('button, input[type=submit]').forEach(function(b){ b.disabled = true; });
+      }, 0);
+    });
+    // Al volver atrás con el navegador, la página restaurada debe poder enviarse de nuevo
+    window.addEventListener('pageshow', function(e){
+      if (!e.persisted) return;
+      document.querySelectorAll('form[data-enviando]').forEach(function(f){
+        delete f.dataset.enviando;
+        f.querySelectorAll('button, input[type=submit]').forEach(function(b){ b.disabled = false; });
+      });
+    });
   </script>
   {% block scripts %}{% endblock %}
 </body>

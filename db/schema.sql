@@ -1,6 +1,7 @@
 -- =============================================================================
 --  gestorbandasgenerico · Esquema completo (PostgreSQL)
 --  = material_base/mordheim.sql + db/migracion_2026-10-18_base.sql
+--    + db/migracion_2026-10-18_categoria.sql
 --  Para una BBDD nueva basta con este fichero.
 --
 --  Códigos de estado:
@@ -108,6 +109,7 @@ CREATE TABLE public.bandas_lin (
 	banda_lin_orden int4 NOT NULL,
 	banda_lin_nombre varchar(150) NOT NULL,
 	banda_lin_subtipo varchar(150) NOT NULL,
+	banda_lin_categoria varchar(50) NULL,   -- p. ej. «Héroe», «Secuaz» (texto libre)
 	banda_lin_cantidad int4 NOT NULL,
 	banda_lin_coste int4 NOT NULL,      -- coste unitario total = precio base + armamento
 	banda_lin_experiencia int4 DEFAULT 0 NULL,

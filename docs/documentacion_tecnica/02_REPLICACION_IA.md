@@ -120,7 +120,9 @@ Crea las tablas exactamente como en el **Anexo A**. Resumen de relaciones:
 6. **Editar miembro**: cobra solo el incremento `coste×cantidad nuevo − anterior` si es > 0 y el miembro sigue en
    plantilla. Retirar equipo no reembolsa. Detecta equipo comprado/retirado comparando listas de nombres (multiconjunto).
 7. **Despedir**: estado 2.
-8. **Tesorería**: siempre editable a mano (puede quedar negativa con aviso).
+8. **Tesorería**: siempre editable a mano (puede quedar negativa con aviso). Los cobros se hacen en una sola sentencia (`SET banda_tesoreria = banda_tesoreria - x RETURNING banda_tesoreria`).
+8b. **Concurrencia**: toda operación que modifica una banda empieza con `SELECT 1 FROM bandas WHERE banda_id=%s FOR UPDATE`. En `base.html`, cada formulario POST se envía una sola vez (marca `data-enviando`; desactiva botones con `setTimeout(…,0)` para conservar el valor del botón pulsado; reactiva en `pageshow`). Despedir es idempotente.
+8c. **Categoría del miembro**: `banda_lin_categoria` varchar(50) opcional, texto libre con `<datalist>` («Héroe», «Secuaz» + usadas); columna en la ficha y en el PDF; cambios al historial.
 9. **Historial** (`bandas.banda_audit`, texto): cada acción añade
    `to_char(now() AT TIME ZONE 'Europe/Madrid','DD/MM/YYYY HH24:MI') || ' · ' || usuario || ' · ' || texto || '\n'`.
    Textos: «Crea la banda con tesorería inicial N»; «Contrata «X» (Tipo) ×n por T [equipo: …] · tesorería A → B»;
@@ -208,7 +210,7 @@ tablas blancas con cabecera gris en mayúsculas pequeñas; contenedor máx. 1100
 2. Tabla de miembros en plantilla: Orden, Nombre (+Lesionado), Tipo, Cant., **una columna por stat** (mayúsculas,
    orden de `orden_stats`), Armamento `nombre (precio)`, Exp., Coste (`×n = total`), Notas, Editar / Despedir (con confirm).
 3. **Popup de miembro** compartido para contratar y editar (cambia `action`, título y botón):
-   orden (siguiente libre), nombre, tipo, cantidad, precio base, stats (`stat_0…`, `type=number` si el valor por
+   orden (siguiente libre), nombre, tipo, categoría, cantidad, precio base, stats (`stat_0…`, `type=number` si el valor por
    defecto es número; precargados con el valor por defecto o el actual), filas dinámicas de armamento
    (`arm_nombre[]`, `arm_precio[]`, añadir/quitar), **coste en vivo** = precio + Σ armamento, `× cantidad = total`,
    aviso «se descontarán N de la tesorería» (nuevo: total; edición: total − total inicial si > 0), experiencia,
@@ -262,6 +264,8 @@ Con usuarios ADM, Gestor (STD que crea la campaña), Jugador1 y Jugador2:
 - [ ] Suplente (inscrito) puede activar el modo comisario pero no cambiar el suplente.
 - [ ] Bloque 3 visible solo al ADM; un reglamento en uso no se puede borrar; la copia SQL incluye `batallas_bandas`.
 - [ ] El registro redirige a `/`; `/salud` responde `ok`.
+- [ ] Dos ediciones simultáneas que añaden una Espada (10) → un solo cargo; cinco contrataciones simultáneas de 20 → tesorería exacta (−100) e historial encadenado; doble despedir → una sola línea.
+- [ ] Tres clics seguidos en «Enviar» del contacto → un único mensaje.
 
 ---
 
@@ -380,6 +384,7 @@ CREATE TABLE public.bandas_lin (
 	banda_lin_orden int4 NOT NULL,
 	banda_lin_nombre varchar(150) NOT NULL,
 	banda_lin_subtipo varchar(150) NOT NULL,
+	banda_lin_categoria varchar(50) NULL,   -- p. ej. «Héroe», «Secuaz» (texto libre)
 	banda_lin_cantidad int4 NOT NULL,
 	banda_lin_coste int4 NOT NULL,      -- coste unitario total = precio base + armamento
 	banda_lin_experiencia int4 DEFAULT 0 NULL,

@@ -30,7 +30,7 @@ teniendo otra activa en la misma campaña lo impide la BBDD → mensaje de error
 ## 2. Miembros de la banda
 Tabla de miembros **en plantilla** (Activo o Lesionado):
 
-Orden · Nombre (+ distintivo «Lesionado») · Tipo · Cant. · **una columna por stat del reglamento**
+Orden · Nombre (+ distintivo «Lesionado») · Tipo · Categoría · Cant. · **una columna por stat del reglamento**
 (en mayúsculas y en el orden escrito) · Armamento (`nombre (precio)`) · Exp. · Coste (y `×n = total` si cantidad > 1) ·
 Notas (+ observaciones) · acciones **Editar** y **Despedir**.
 
@@ -44,6 +44,7 @@ Botón **+ Contratar miembro** o **Editar** abren el mismo popup `#modal-miembro
 |---|---|
 | Orden | Por defecto, el siguiente libre |
 | Nombre, Tipo | Obligatorios |
+| Categoría | Opcional, máx. 50 (`banda_lin_categoria`). Sugerencias: «Héroe», «Secuaz» y las ya usadas en la banda (`<datalist>`) |
 | Cantidad | ≥ 1 (grupos de secuaces) |
 | Precio | Precio base ≥ 0. Al editar se deduce: `coste − Σ armamento` |
 | Stats | Un campo por stat (`stat_0…stat_n`), relleno con el valor por defecto del reglamento; numérico si el valor por defecto es número, texto si es texto (p. ej. `45°`) |
@@ -64,6 +65,10 @@ Actualiza la línea. Detecta y anota cambios (nombre, tipo, cantidad, coste, exp
 
 ### Despedir — `POST /banda/<id>/miembro/<lid>/despedir`
 Confirmación en el navegador → estado `2` (Despedido), anota «Despide a «X» (Tipo)», recalcula el valor.
+Si ya estaba despedido (doble clic), no hace nada: ««X» ya estaba despedido.»
+
+### Protección contra doble clic
+Todas las acciones de esta pantalla bloquean la banda (`SELECT … FOR UPDATE`) mientras se procesan, y los cobros se restan en una sola sentencia SQL. Un doble clic o dos usuarios a la vez nunca cobran dos veces ni pisan la tesorería. En el navegador, cada formulario solo se envía una vez.
 
 ## 4. Bajas (plegable)
 Miembros Despedidos o Muertos, con la misma tabla. Se pueden editar (p. ej. corregir un estado).
@@ -80,7 +85,7 @@ exactamente lo mismo. Generado con reportlab en `app/pdf.py` (`build_banda_pdf`)
 - Título (nombre de la banda) y subtítulo: tipo · campaña · reglamento.
 - Tabla de datos: Usuario, Banda, Campaña, Reglamento, Tesorería, Coste, Estado (cabecera beige).
 - Observaciones.
-- «Miembros de la banda (n)»: Nº, Nombre, Tipo, Cant., **una columna por stat**, Armamento, Exp., Coste
+- «Miembros de la banda (n)»: Nº, Nombre, Tipo, Categoría, Cant., **una columna por stat**, Armamento, Exp., Coste
   (`xN = total`), Estado, Notas (+ observaciones). Cabecera gris oscura, filas alternas.
 - «Bajas: despedidos y muertos (n)» con la misma tabla, si hay.
 - «Historial (n)» completo, el más reciente primero.
@@ -89,7 +94,7 @@ exactamente lo mismo. Generado con reportlab en `app/pdf.py` (`build_banda_pdf`)
 Detalles técnicos:
 - Las columnas de stats se dimensionan **midiendo el ancho real** de su palabra más larga
   (`stringWidth`, Helvetica-Bold); `impactos_totales` se muestra «IMPACTOS TOTALES» para partir por palabras.
-  Si no caben, se reducen proporcionalmente reservando al menos 55 mm para Armamento + Notas.
+  Si no caben, se reducen proporcionalmente reservando al menos 45 mm para Armamento + Notas.
 - La fuente Helvetica no tiene «→»: en el PDF se sustituye por «->». El texto del usuario se escapa.
 - Nombre del archivo sin acentos ni símbolos: «Lobos «azules» & Cía» → `banda_Lobos_azules_Cia.pdf`
   (se muestra en el navegador; se puede guardar o imprimir).

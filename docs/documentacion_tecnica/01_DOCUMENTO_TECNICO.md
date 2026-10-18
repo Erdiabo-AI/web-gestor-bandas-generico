@@ -171,7 +171,7 @@ notificaciones n───1 campanas (mensaje al comisario, opcional)
 | `campanas` | Campañas | `regla_id`, `campana_estado`, `campana_tesoreria_inicial`, `usuarios_gestor_id`, `usuarios_gestor_suplente_id` |
 | `campanas_usuarios` | Inscripción usuario ↔ campaña | único (`campana_id`, `usuario_id`) |
 | `bandas` | Bandas | `campana_usuario_id` (propietario), `banda_tesoreria`, `banda_valor_banda`, `banda_estado`, `banda_audit` (historial) |
-| `bandas_lin` | Miembros de banda | `banda_lin_coste` (unitario), `banda_lin_cantidad`, `banda_lin_stats`, `banda_lin_armamento`, `banda_lin_estado` |
+| `bandas_lin` | Miembros de banda | `banda_lin_categoria` (texto libre, p. ej. Héroe/Secuaz), `banda_lin_coste` (unitario), `banda_lin_cantidad`, `banda_lin_stats`, `banda_lin_armamento`, `banda_lin_estado` |
 | `batallas` | Batallas / actas | `batalla_orden` (único por campaña), `batalla_fecha`, `batalla_escenario`, `batalla_estado`, `batalla_ganador` (texto derivado) |
 | `batallas_bandas` | Bandas implicadas en una batalla | `batalla_banda_ganancias`, `batalla_banda_ganador`, `batalla_banda_info` (`{"bajas": …}`) |
 | `notificaciones` | Contacto y avisos | `notificacion_tipo` (CONTACTO, RECUPERACION, COMISARIO), `campana_id` (si va al comisario) |
@@ -257,6 +257,14 @@ El modo comisario se guarda en `session["com"]` (lista de ids de campaña) y se 
   equipo comprado o más unidades. Retirar equipo **no reembolsa** automáticamente.
 - **Despedir** pone el estado `2` (Despedido); el miembro pasa a la lista de bajas y deja de contar en el valor.
 - La **tesorería es siempre editable** a mano desde la ficha. Si queda negativa se avisa, pero se permite.
+- **Categoría** del miembro (`banda_lin_categoria`): texto libre opcional (máx. 50) con sugerencias «Héroe», «Secuaz» y las ya usadas en la banda. Sus cambios quedan en el historial.
+
+### 8.3.1 Doble clic y operaciones simultáneas
+- **Navegador** (`base.html`): cada formulario POST se envía una sola vez; los botones se desactivan justo después de enviar (con `setTimeout`, para no perder el valor del botón pulsado, p. ej. `accion=confirmar`). Al volver atrás con el navegador se reactivan (`pageshow`).
+- **Servidor**: toda operación que modifica una banda la bloquea con `SELECT … FOR UPDATE` (`bandas._banda_editable`) hasta confirmar. Una segunda petición simultánea espera y lee los datos ya actualizados, así que no vuelve a cobrar.
+- **Cobros atómicos**: `UPDATE bandas SET banda_tesoreria = banda_tesoreria − importe … RETURNING`; el historial calcula «antes → después» a partir del valor real devuelto.
+- **Despedir** es idempotente: si el miembro ya estaba despedido no se repite ni se anota.
+- Probado con peticiones en paralelo: doble compra → un solo cargo; cinco contrataciones a la vez → tesorería exacta.
 - **Historial**: toda acción (crear banda, contratar, editar, comprar, despedir, cambios de datos y de tesorería)
   añade una línea a `bandas.banda_audit` con el formato `dd/mm/aaaa hh:mm · Usuario · texto` (hora de
   España calculada en PostgreSQL con `AT TIME ZONE 'Europe/Madrid'`).
@@ -297,6 +305,7 @@ bajas = miembros en estado Muerto.
 | Inyección SQL | Siempre consultas parametrizadas |
 | XSS | Autoescape de Jinja; datos a JavaScript con `tojson`; los `confirm()` no interpolan datos de usuario |
 | Permisos | Comprobados en el servidor en cada POST (403 si no corresponde), no solo ocultando botones |
+| Concurrencia | Bloqueo de fila por banda, cobros atómicos y protección de doble envío (§8.3.1) |
 | Redirecciones | Tras contactar solo se vuelve al `referrer` si es del mismo host |
 | Tokens de recuperación | Solo se guarda el hash; un uso; caducidad 24 h |
 | Secretos | `.env` y `.env.*` fuera de git y de Vercel; `/salud` no muestra la cadena de conexión |

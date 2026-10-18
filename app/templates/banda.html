@@ -7,6 +7,7 @@
     <td>{{ ln.banda_lin_nombre }}
       {% if ln.banda_lin_estado %}<span class="badge {{ 'badge-pend' if ln.banda_lin_estado == 1 }}">{{ estados_miembro.get(ln.banda_lin_estado) }}</span>{% endif %}</td>
     <td>{{ ln.banda_lin_subtipo }}</td>
+    <td>{{ ln.banda_lin_categoria or '' }}</td>
     <td>{{ ln.banda_lin_cantidad }}</td>
     {% for s in stats %}
       <td class="col-stat">{{ ln.banda_lin_stats.get(s, '') if ln.banda_lin_stats is mapping else '' }}</td>
@@ -35,7 +36,7 @@
 
 {% macro cabecera() %}
   <tr>
-    <th>Orden</th><th>Nombre</th><th>Tipo</th><th>Cant.</th>
+    <th>Orden</th><th>Nombre</th><th>Tipo</th><th>Categoría</th><th>Cant.</th>
     {% for s in stats %}<th class="col-stat">{{ s|upper }}</th>{% endfor %}
     <th>Armamento</th><th>Exp.</th><th>Coste</th><th>Notas</th>
     {% if puede_editar %}<th></th>{% endif %}
@@ -140,6 +141,7 @@
         <label class="corto">Orden <input type="number" name="orden" id="m-orden" min="1" required></label>
         <label>Nombre <input type="text" name="nombre" id="m-nombre" maxlength="150" required></label>
         <label>Tipo <input type="text" name="subtipo" id="m-subtipo" maxlength="150" required placeholder="p. ej. Capitán"></label>
+        <label>Categoría <input type="text" name="categoria" id="m-categoria" maxlength="50" list="categorias" placeholder="p. ej. Héroe"></label>
         <label class="corto">Cantidad <input type="number" name="cantidad" id="m-cantidad" min="1" value="1" required></label>
         <label class="corto">Precio <input type="number" name="precio" id="m-precio" min="0" value="0" required></label>
       </div>
@@ -169,6 +171,11 @@
       <p class="coste-total">Coste del miembro: <strong id="m-coste">0</strong>
         <span id="m-coste-total"></span>
         <span class="hint" id="m-aviso-cobro"></span></p>
+
+      <datalist id="categorias">
+        {% set usadas = (plantilla + bajas)|map(attribute='banda_lin_categoria')|select|list %}
+        {% for c in (['Héroe', 'Secuaz'] + usadas)|unique %}<option value="{{ c }}">{% endfor %}
+      </datalist>
 
       <div class="form-fila">
         <label class="corto">Experiencia <input type="number" name="experiencia" id="m-experiencia" min="0" value="0"></label>
@@ -236,6 +243,7 @@
     $('m-orden').value = m ? m.orden : SIGUIENTE_ORDEN;
     $('m-nombre').value = m ? m.nombre : '';
     $('m-subtipo').value = m ? m.subtipo : '';
+    $('m-categoria').value = m ? m.categoria : '';
     $('m-cantidad').value = m ? m.cantidad : 1;
     $('m-precio').value = m ? m.precio : 0;
     $('m-experiencia').value = m ? m.experiencia : 0;

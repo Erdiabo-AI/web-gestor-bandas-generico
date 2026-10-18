@@ -45,6 +45,14 @@ def _banda(banda_id):
 
 
 def _banda_editable(banda_id):
+    """Banda que el usuario puede modificar, BLOQUEADA hasta el final de la petición.
+
+    SELECT … FOR UPDATE: si llegan dos peticiones a la vez (doble clic, o jugador y
+    comisario), la segunda espera a que la primera confirme y lee los datos ya
+    actualizados. Así no se cobra dos veces ni se pisa la tesorería."""
+    if db.query("SELECT 1 AS ok FROM bandas WHERE banda_id = %s FOR UPDATE",
+                (str(banda_id),), one=True) is None:
+        abort(404)
     b = _banda(banda_id)
     if not puede_editar_banda(b, session.get("user")):
         abort(403)
@@ -161,7 +169,8 @@ def ver(banda_id):
     # Datos para el popup de edición (se serializan con |tojson en la plantilla)
     miembros = {str(ln["banda_lin_id"]): {
         "orden": ln["banda_lin_orden"], "nombre": ln["banda_lin_nombre"],
-        "subtipo": ln["banda_lin_subtipo"], "cantidad": ln["banda_lin_cantidad"],
+        "subtipo": ln["banda_lin_subtipo"], "categoria": ln["banda_lin_categoria"] or "",
+        "cantidad": ln["banda_lin_cantidad"],
         "precio": ln["banda_lin_coste"] - _suma_armamento(ln["banda_lin_armamento"]),
         "stats": ln["banda_lin_stats"] if isinstance(ln["banda_lin_stats"], dict) else {},
         "armamento": ln["banda_lin_armamento"] if isinstance(ln["banda_lin_armamento"], list) else [],
@@ -260,6 +269,7 @@ def _leer_miembro(form, stats_claves, defectos):
         "orden": a_entero(form.get("orden"), 1),
         "nombre": nombre,
         "subtipo": subtipo,
+        "categoria": (form.get("categoria") or "").strip()[:50] or None,
         "cantidad": max(1, a_entero(form.get("cantidad"), 1)),
         "coste": precio + _suma_armamento(armamento),
         "stats": {clave: _convertir_stat(form.get(f"stat_{i}"), defectos.get(clave))
@@ -279,11 +289,17 @@ def _claves_stats(b):
 
 
 def _cobrar(b, importe, motivo, commit=False):
-    """Descuenta `importe` de la tesorería y lo anota en el historial."""
-    antes = b["banda_tesoreria"] or 0
-    despues = antes - importe
-    db.execute("UPDATE bandas SET banda_tesoreria = %s WHERE banda_id = %s",
-               (despues, str(b["banda_id"])), commit=False)
+    """Descuenta `importe` de la tesorería y lo anota en el historial.
+
+    La resta la hace PostgreSQL en una sola sentencia (tesorería = tesorería − importe)
+    sobre el valor vigente, no sobre uno leído antes: dos cobros simultáneos nunca
+    se pisan."""
+    row = db.execute(
+        """UPDATE bandas SET banda_tesoreria = COALESCE(banda_tesoreria, 0) - %s
+           WHERE banda_id = %s RETURNING banda_tesoreria""",
+        (importe, str(b["banda_id"])), returning=True, commit=False)
+    despues = row["banda_tesoreria"]
+    antes = despues + importe
     anotar_historial(b["banda_id"], f"{motivo} · tesorería {antes} → {despues}", commit=commit)
     b["banda_tesoreria"] = despues
     if despues < 0:
@@ -301,10 +317,11 @@ def contratar(banda_id):
         return redirect(url_for("bandas.ver", banda_id=banda_id))
     db.execute(
         """INSERT INTO bandas_lin (banda_id, banda_lin_orden, banda_lin_nombre, banda_lin_subtipo,
-               banda_lin_cantidad, banda_lin_coste, banda_lin_experiencia, banda_lin_estado,
-               banda_lin_stats, banda_lin_armamento, banda_lin_notas, banda_lin_observaciones)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s, %s)""",
-        (str(banda_id), m["orden"], m["nombre"], m["subtipo"], m["cantidad"], m["coste"],
+               banda_lin_categoria, banda_lin_cantidad, banda_lin_coste, banda_lin_experiencia,
+               banda_lin_estado, banda_lin_stats, banda_lin_armamento, banda_lin_notas,
+               banda_lin_observaciones)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s, %s)""",
+        (str(banda_id), m["orden"], m["nombre"], m["subtipo"], m["categoria"], m["cantidad"], m["coste"],
          m["experiencia"], Json(m["stats"]), Json(m["armamento"]), m["notas"], m["observaciones"]),
         commit=False)
     total = m["coste"] * m["cantidad"]
@@ -339,6 +356,7 @@ def editar_miembro(banda_id, lin_id):
     for etiqueta, antes, despues in (
             ("nombre", ln["banda_lin_nombre"], m["nombre"]),
             ("tipo", ln["banda_lin_subtipo"], m["subtipo"]),
+            ("categoría", ln["banda_lin_categoria"] or "—", m["categoria"] or "—"),
             ("cantidad", ln["banda_lin_cantidad"], m["cantidad"]),
             ("coste", ln["banda_lin_coste"], m["coste"]),
             ("experiencia", ln["banda_lin_experiencia"] or 0, m["experiencia"])):
@@ -367,12 +385,12 @@ def editar_miembro(banda_id, lin_id):
 
     db.execute(
         """UPDATE bandas_lin SET banda_lin_orden=%s, banda_lin_nombre=%s, banda_lin_subtipo=%s,
-               banda_lin_cantidad=%s, banda_lin_coste=%s, banda_lin_experiencia=%s,
+               banda_lin_categoria=%s, banda_lin_cantidad=%s, banda_lin_coste=%s, banda_lin_experiencia=%s,
                banda_lin_estado=%s, banda_lin_stats=%s, banda_lin_armamento=%s,
                banda_lin_notas=%s, banda_lin_observaciones=%s
            WHERE banda_lin_id=%s""",
-        (m["orden"], m["nombre"], m["subtipo"], m["cantidad"], m["coste"], m["experiencia"],
-         m["estado"], Json(m["stats"]), Json(m["armamento"]), m["notas"], m["observaciones"],
+        (m["orden"], m["nombre"], m["subtipo"], m["categoria"], m["cantidad"], m["coste"],
+         m["experiencia"], m["estado"], Json(m["stats"]), Json(m["armamento"]), m["notas"], m["observaciones"],
          str(lin_id)), commit=False)
 
     # Cobro: lo que sube el coste de la línea (equipo nuevo o más unidades).
@@ -393,6 +411,9 @@ def editar_miembro(banda_id, lin_id):
 def despedir(banda_id, lin_id):
     _banda_editable(banda_id)
     ln = _linea(banda_id, lin_id)
+    if ln["banda_lin_estado"] == 2:   # doble clic: ya estaba despedido, no se repite
+        flash(f"«{ln['banda_lin_nombre']}» ya estaba despedido.", "info")
+        return redirect(url_for("bandas.ver", banda_id=banda_id))
     db.execute("UPDATE bandas_lin SET banda_lin_estado = 2 WHERE banda_lin_id = %s",
                (str(lin_id),), commit=False)
     anotar_historial(banda_id, f"Despide a «{ln['banda_lin_nombre']}» ({ln['banda_lin_subtipo']})",
