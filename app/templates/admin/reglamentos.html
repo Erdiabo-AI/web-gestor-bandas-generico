@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Reglamentos — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Reglamentos</h1>
+  <div>
+    <button class="btn btn-primary" type="button" onclick="editarRegla(null)">+ Nuevo reglamento</button>
+    <a class="btn" href="{{ url_for('dashboard.perfil') }}">← Volver al perfil</a>
+  </div>
+</div>
+
+{% if reglas %}
+  <div class="tabla-scroll">
+    <table class="tabla">
+      <thead><tr><th>Juego</th><th>Año</th><th>Versión</th><th>Stats de un miembro</th><th>Observaciones</th><th>Campañas</th><th></th></tr></thead>
+      <tbody>
+        {% for r in reglas %}
+          <tr>
+            <td>{{ r.regla_descripcion }}</td>
+            <td>{{ r.regla_anyo }}</td>
+            <td>{{ r.regla_version }}</td>
+            <td><code>{{ r.stats_ordenados|info }}</code></td>
+            <td>{{ r.regla_observaciones or '' }}</td>
+            <td>{{ r.n_campanas }}</td>
+            <td class="acciones">
+              <button class="btn btn-small" type="button" onclick="editarRegla('{{ r.regla_id }}')">Editar</button>
+              {% if not r.n_campanas %}
+                <form method="post" action="{{ url_for('admin.reglamento_borrar', rid=r.regla_id) }}"
+                      onsubmit="return confirm('¿Eliminar este reglamento?');">
+                  <button class="btn btn-small btn-danger" type="submit">Eliminar</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="empty">No hay reglamentos. Crea el primero con «Nuevo reglamento».</p>
+{% endif %}
+
+<div class="modal" id="modal-regla">
+  <div class="modal-box modal-wide">
+    <div class="modal-head">
+      <h3 id="regla-titulo">Reglamento</h3>
+      <button type="button" data-cerrar>✕</button>
+    </div>
+    <form method="post" action="{{ url_for('admin.reglamento_guardar') }}" class="form">
+      <input type="hidden" name="regla_id" id="r-id">
+      <label>Nombre del juego
+        <input type="text" name="descripcion" id="r-descripcion" maxlength="150" required>
+      </label>
+      <div class="form-fila">
+        <label>Año de creación <input type="number" name="anyo" id="r-anyo" min="1900" max="2100" required></label>
+        <label>Versión <input type="text" name="version" id="r-version" maxlength="50" required></label>
+      </div>
+      <label>Observaciones
+        <input type="text" name="observaciones" id="r-observaciones" maxlength="255">
+      </label>
+      <label>Stats de un miembro (JSON)
+        <textarea name="stats" id="r-stats" rows="4" class="mono"
+                  placeholder='{"m": 4, "ha": 4, "hp": 3, "f": 3, "r": 3, "h": 1, "i": 4, "a": 1, "l": 7}'></textarea>
+        <small class="hint">Las claves son las columnas de stats; los valores son los que aparecen
+          por defecto al contratar (número o texto, p. ej. <code>"giros": "45°"</code>).</small>
+      </label>
+      <button class="btn btn-primary" type="submit">Guardar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="reglas-datos" type="application/json">{{ datos|tojson }}</script>
+<script>
+  var REGLAS = JSON.parse(document.getElementById('reglas-datos').textContent);
+  function editarRegla(id) {
+    var r = id ? REGLAS[id] : {descripcion: '', anyo: new Date().getFullYear(), version: '', observaciones: '', stats: ''};
+    document.getElementById('regla-titulo').textContent = id ? 'Editar reglamento' : 'Nuevo reglamento';
+    document.getElementById('r-id').value = id || '';
+    document.getElementById('r-descripcion').value = r.descripcion;
+    document.getElementById('r-anyo').value = r.anyo;
+    document.getElementById('r-version').value = r.version;
+    document.getElementById('r-observaciones').value = r.observaciones;
+    document.getElementById('r-stats').value = (r.stats === '{}') ? '' : r.stats;
+    abrirModal('modal-regla');
+  }
+</script>
+{% endblock %}

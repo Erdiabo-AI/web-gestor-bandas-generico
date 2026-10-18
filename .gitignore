@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Entorno / secretos
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# Datos y temporales
+*.log
+scratch/
+
+# Material pesado / con copyright (se queda en local, fuera del repo)
+*.pdf
+*.docx
+manual-mordheim/
+
+# Material de diseño (mockups con datos personales, specs): solo local. Repo público.
+material_base/

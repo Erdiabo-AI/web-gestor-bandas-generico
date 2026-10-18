@@ -1,0 +1,14 @@
+# No desplegar a Vercel (solo documentación, material y entorno local)
+.venv
+.env
+.env.*
+.claude
+db
+docs
+material_base
+manual-mordheim
+wsgi.py
+*.md
+*.pdf
+*.docx
+*.zip

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('public.index') }}">{{ app_name }}</a>
+    <nav class="user-nav">
+      {% if current_user %}
+        {% if modo_comisario %}
+          <a class="badge badge-pend" href="{{ url_for('campanas.gestion_campanas') }}"
+             title="Tienes el modo comisario activo en alguna campaña">Modo comisario</a>
+        {% endif %}
+        <span class="user-name">{{ current_user.nombre }}</span>
+        <a class="btn" href="{{ url_for('dashboard.perfil') }}">Mi perfil</a>
+        <a class="btn btn-ghost" href="{{ url_for('auth.logout') }}">Salir</a>
+      {% else %}
+        <a class="btn" href="{{ url_for('auth.login') }}">Login</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flashes">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <a href="#" onclick="document.getElementById('modal-contacto').classList.add('open');return false;">Contacto</a>
+    <a href="{{ url_for('public.aviso_legal') }}">Aviso legal</a>
+    <a href="{{ url_for('public.privacidad') }}">Política de Privacidad</a>
+  </footer>
+
+  <!-- Popup de contacto: envía una notificación al administrador -->
+  <div class="modal" id="modal-contacto">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Contactar con el administrador</h3>
+        <button type="button" onclick="document.getElementById('modal-contacto').classList.remove('open')">✕</button>
+      </div>
+      <form method="post" action="{{ url_for('public.contactar') }}" class="form">
+        <label>Tu nombre
+          <input type="text" name="nombre" maxlength="100" value="{{ current_user.nombre if current_user }}">
+        </label>
+        <label>Tu email *
+          <input type="email" name="email" maxlength="150" required>
+        </label>
+        <label>Mensaje *
+          <textarea name="mensaje" rows="5" maxlength="2000" required
+                    placeholder="Cuéntanos: dudas, incidencias, sugerencias…"></textarea>
+        </label>
+        <button class="btn btn-primary" type="submit">Enviar</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    // Popups: data-abrir="id" abre, data-cerrar o clic en el fondo cierra
+    function abrirModal(id){ document.getElementById(id).classList.add('open'); }
+    function cerrarModal(id){ document.getElementById(id).classList.remove('open'); }
+    document.addEventListener('click', function(e){
+      var a = e.target.closest('[data-abrir]');
+      if (a) { e.preventDefault(); abrirModal(a.dataset.abrir); return; }
+      var c = e.target.closest('[data-cerrar]');
+      if (c) { c.closest('.modal').classList.remove('open'); return; }
+      if (e.target.classList && e.target.classList.contains('modal')) e.target.classList.remove('open');
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

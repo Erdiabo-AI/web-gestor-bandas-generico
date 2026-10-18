@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Registro — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="form-wrap">
+  <h1>Crear cuenta</h1>
+  <form method="post" action="{{ url_for('auth.register') }}" class="form">
+    <label>Nombre
+      <input type="text" name="nombre" maxlength="100" required autofocus>
+    </label>
+    <label>Email
+      <input type="email" name="email" maxlength="150" required>
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" minlength="8" required>
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Registrarse</button>
+      <a class="btn btn-ghost" href="{{ url_for('public.index') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

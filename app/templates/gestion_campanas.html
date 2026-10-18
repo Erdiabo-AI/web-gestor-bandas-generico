@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Gestión de campañas — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Gestión de campañas</h1>
+  <a class="btn" href="{{ url_for('dashboard.perfil') }}">← Volver al perfil</a>
+</div>
+
+<div class="grid-4">
+  <!-- Bloque 1: nueva campaña -->
+  <section class="card block">
+    <h2>Nueva campaña</h2>
+    {% if reglas %}
+      <form method="post" action="{{ url_for('campanas.crear') }}" class="form">
+        <label>Nombre de la campaña
+          <input type="text" name="nombre" maxlength="150" required>
+        </label>
+        <label>Tesorería inicial
+          <input type="number" name="tesoreria_inicial" min="0" value="500" required>
+          <small class="hint">Se copia a cada banda al crearla (p. ej. 500 coronas en Mordheim).</small>
+        </label>
+        <label>Temporada
+          <input type="text" name="temporada" maxlength="15" value="{{ anyo_actual }}" required>
+        </label>
+        <label>Reglamento
+          <select name="regla_id" required>
+            <option value="">— Elige —</option>
+            {% for r in reglas %}
+              <option value="{{ r.regla_id }}">{{ r.regla_descripcion }} {{ r.regla_version }} ({{ r.regla_anyo }})</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="btn btn-primary" type="submit">Crear campaña</button>
+      </form>
+    {% else %}
+      <p class="empty">No hay reglamentos. {% if current_user.rol == 'ADM' %}<a href="{{ url_for('admin.reglamentos') }}">Crea uno</a> antes de crear campañas.{% else %}Pide al administrador que cree uno.{% endif %}</p>
+    {% endif %}
+  </section>
+
+  <!-- Bloque 2: opciones de campaña -->
+  <section class="card block">
+    <h2>Opciones de campaña</h2>
+    {% if mis %}
+      <form method="get" class="form">
+        <label>Campaña
+          <select name="campana" onchange="this.form.submit()">
+            {% for m in mis %}
+              <option value="{{ m.campana_id }}" {{ 'selected' if sel and sel.campana_id == m.campana_id }}>{{ m.campana_nombre }} ({{ m.campana_temporada }})</option>
+            {% endfor %}
+          </select>
+        </label>
+        <noscript><button class="btn btn-small" type="submit">Ver</button></noscript>
+      </form>
+
+      {% if sel %}
+        <p class="hint">Gestor: {{ sel.gestor_nombre }} · Tesorería inicial: {{ sel.campana_tesoreria_inicial }}</p>
+
+        <form method="post" action="{{ url_for('campanas.cambiar_estado', campana_id=sel.campana_id) }}" class="inline-form">
+          <label for="estado">Estado</label>
+          <select id="estado" name="estado">
+            {% for e in estados %}
+              <option value="{{ e }}" {{ 'selected' if sel.campana_estado == e }}>{{ e|capitalize }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-small" type="submit">Cambiar</button>
+        </form>
+
+        {% if es_creador %}
+          <form method="post" action="{{ url_for('campanas.suplente', campana_id=sel.campana_id) }}" class="inline-form">
+            <label for="suplente">Suplente</label>
+            <select id="suplente" name="usuario_id">
+              <option value="">— Ninguno —</option>
+              {% for u in inscritos %}
+                <option value="{{ u.usuario_id }}" {{ 'selected' if sel.usuarios_gestor_suplente_id == u.usuario_id }}>{{ u.usuario_nombre }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-small" type="submit">Guardar</button>
+          </form>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('campanas.comisario', campana_id=sel.campana_id) }}" class="com-form">
+          {% if com_activo %}
+            <input type="hidden" name="activar" value="0">
+            <p><span class="badge badge-pend">Modo comisario activo</span></p>
+            <button class="btn btn-small" type="submit">Salir del modo comisario</button>
+          {% else %}
+            <input type="hidden" name="activar" value="1">
+            <button class="btn btn-primary btn-small" type="submit"
+                    title="Permite gestionar las bandas y actas de todos los usuarios de esta campaña">Acceder como comisario</button>
+          {% endif %}
+        </form>
+
+        <h3 id="mensajes">Mensajes al comisario</h3>
+        {% if mensajes %}
+          <ul class="lista">
+            {% for n in mensajes %}
+              <li class="{{ 'notif-nueva' if not n.leida }}">
+                <span class="li-main">{{ n.remitente_nombre or n.remitente_email }}
+                  {% if not n.leida %}<span class="badge badge-pend">nuevo</span>{% endif %}</span>
+                <span class="li-sub">{{ n.fecha.strftime('%d/%m/%Y %H:%M') if n.fecha }} · Responder a: {{ n.remitente_email }}</span>
+                <p class="art-body">{{ n.mensaje }}</p>
+                <form method="post" action="{{ url_for('campanas.mensaje', nid=n.notificacion_id) }}" class="li-actions">
+                  {% if not n.leida %}<button class="btn btn-small" name="accion" value="leida">Marcar leído</button>{% endif %}
+                  <button class="btn btn-small btn-danger" name="accion" value="borrar"
+                          onclick="return confirm('¿Eliminar este mensaje?');">Eliminar</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty">Sin mensajes.</p>
+        {% endif %}
+      {% endif %}
+    {% else %}
+      <p class="empty">No gestionas ninguna campaña todavía.</p>
+    {% endif %}
+  </section>
+</div>
+
+{% if current_user.rol == 'ADM' %}
+<!-- Bloque 3: opciones de administrador -->
+<section class="admin-block" id="bloque-3">
+  <h2>Opciones de administrador</h2>
+
+  <h3>Todas las campañas</h3>
+  {% if todas %}
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead><tr><th>Campaña</th><th>Reglas</th><th>Temporada</th><th>Estado</th><th>Gestor</th><th>Bandas</th></tr></thead>
+        <tbody>
+          {% for c in todas %}
+            <tr>
+              <td><a href="{{ url_for('campanas.gestion_campanas', campana=c.campana_id) }}">{{ c.campana_nombre }}</a></td>
+              <td>{{ c.regla_descripcion or '—' }}</td>
+              <td>{{ c.campana_temporada }}</td>
+              <td>{{ c.campana_estado|capitalize }}</td>
+              <td>{{ c.gestor_nombre }}</td>
+              <td>{{ c.n_bandas }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">No hay campañas.</p>
+  {% endif %}
+
+  <h3>Todos los usuarios</h3>
+  <div class="tabla-scroll">
+    <table class="tabla">
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Recuperación</th><th></th></tr></thead>
+      <tbody>
+        {% for u in usuarios %}
+          <tr>
+            <td>{{ u.usuario_nombre }}</td>
+            <td>{{ u.usuario_email }}</td>
+            <td>{{ u.usuario_rol }}</td>
+            <td>{% if u.reset_solicitado %}<span class="badge badge-pend">Solicitada {{ u.reset_solicitado.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin.generar_reset', usuario_id=u.usuario_id) }}"
+                    onsubmit="return confirm('¿Generar un enlace de recuperación para este usuario?');">
+                <button class="btn btn-small" type="submit">Enlace de contraseña</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

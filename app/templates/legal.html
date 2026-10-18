@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="form-wrap legal">
+  <h1 class="page-title">{{ titulo }}</h1>
+
+  {% if pagina == 'aviso' %}
+    <section class="card block">
+      <h2>1. Objeto y titularidad</h2>
+      <p>Este sitio web («{{ app_name }}») es una aplicación <strong>sin ánimo de
+      lucro</strong> para llevar las fichas de control de campañas de juegos de miniaturas
+      entre un grupo de aficionados. Su titular y administrador es el organizador, con quien
+      puedes contactar en cualquier momento a través del enlace <em>Contacto</em> del pie
+      de página.</p>
+
+      <h2>2. Condiciones de uso</h2>
+      <p>El registro y el uso del gestor son gratuitos. El usuario se compromete a hacer un
+      uso correcto del sitio: no suplantar a otras personas, no introducir datos falsos en
+      las fichas o resultados de batalla y no intentar acceder a funciones o datos de otros
+      usuarios. El administrador puede suspender o eliminar cuentas que incumplan estas
+      condiciones.</p>
+
+      <h2>3. Contenido y disponibilidad</h2>
+      <p>El servicio se ofrece «tal cual», en fase de pruebas (beta), sin garantía de
+      disponibilidad ni de conservación de los datos de juego. El administrador no se hace
+      responsable de las decisiones tomadas por los gestores de cada campaña.</p>
+
+      <h2>4. Propiedad intelectual</h2>
+      <p>Mordheim y los demás juegos, nombres y elementos citados son propiedad de sus
+      respectivos titulares (entre ellos <strong>Games Workshop Limited</strong>). Este
+      sitio es una herramienta de aficionados, no oficial, sin relación ni respaldo de
+      dichos titulares, y no reproduce sus reglamentos. El código y los textos propios del
+      gestor pertenecen a su administrador.</p>
+    </section>
+
+  {% else %}
+    <section class="card block">
+      <h2>1. Responsable del tratamiento</h2>
+      <p>El responsable es el administrador de este gestor (contacto: enlace
+      <em>Contacto</em> del pie de página, que le hace llegar tu mensaje directamente).</p>
+
+      <h2>2. Qué datos recogemos y para qué</h2>
+      <ul class="lista">
+        <li><span class="li-main">Datos de la cuenta</span>
+            <span class="li-sub">Nombre o alias, email y contraseña (guardada cifrada con hash — nadie puede leerla).</span></li>
+        <li><span class="li-main">Datos de juego</span>
+            <span class="li-sub">Bandas, miembros y batallas que tú mismo introduces. Son visibles para el resto de usuarios porque las campañas son públicas dentro del gestor.</span></li>
+        <li><span class="li-main">Mensajes de contacto</span>
+            <span class="li-sub">Si usas el formulario de contacto, guardamos tu mensaje y tu email para poder responderte.</span></li>
+      </ul>
+      <p><strong>Finalidad única</strong>: gestionar las campañas y comunicarnos contigo.
+      No hay publicidad, no se elabora ningún perfil y no se ceden datos a terceros con
+      fines comerciales.</p>
+
+      <h2>3. Base jurídica</h2>
+      <p>Tu consentimiento al registrarte y la ejecución del propio servicio que solicitas
+      (art. 6.1.a y 6.1.b RGPD).</p>
+
+      <h2>4. Dónde se guardan los datos</h2>
+      <p>La aplicación se aloja en <strong>Vercel</strong> y la base de datos en
+      <strong>Neon</strong> (PostgreSQL, región UE), proveedores que actúan como encargados
+      del tratamiento con sus propias garantías RGPD.</p>
+
+      <h2>5. Cuánto tiempo</h2>
+      <p>Mientras mantengas tu cuenta o dure la actividad de las campañas. Puedes pedir la
+      eliminación de tu cuenta en cualquier momento (ver punto 6).</p>
+
+      <h2>6. Tus derechos</h2>
+      <p>Puedes ejercer en cualquier momento tus derechos de <strong>acceso, rectificación,
+      supresión, oposición, limitación y portabilidad</strong> escribiendo por el formulario
+      de <em>Contacto</em>. Tu nombre y email puedes corregirlos tú mismo desde tu perfil.
+      También puedes reclamar ante la Agencia Española de Protección de Datos
+      (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>).</p>
+
+      <h2>7. Cookies</h2>
+      <p>Este sitio usa <strong>una única cookie técnica de sesión</strong>, imprescindible
+      para mantener tu inicio de sesión. No hay cookies de análisis, publicidad ni
+      seguimiento, por lo que no se requiere banner de consentimiento.</p>
+    </section>
+  {% endif %}
+
+  <p class="hint">Última actualización: octubre de 2026.</p>
+</div>
+{% endblock %}

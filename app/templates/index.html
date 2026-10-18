@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }} — Campañas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Campañas</h1>
+{% if campanas %}
+  <div class="tabla-scroll">
+    <table class="tabla">
+      <thead>
+        <tr><th>Nombre de campaña</th><th>Nombre de reglas</th><th>Año de campaña</th></tr>
+      </thead>
+      <tbody>
+        {% for c in campanas %}
+          <tr>
+            <td><a href="{{ url_for('public.campana', campana_id=c.campana_id) }}">{{ c.campana_nombre }}</a></td>
+            <td>{{ c.regla_descripcion or '—' }}{% if c.regla_version %} <small>({{ c.regla_version }})</small>{% endif %}</td>
+            <td>{{ c.campana_temporada }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="empty">No hay campañas creadas.</p>
+{% endif %}
+{% endblock %}

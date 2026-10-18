@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Mi perfil — {{ app_name }}{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Hola, {{ current_user.nombre }}</h1>
+
+<div class="grid-4">
+  <section class="card block">
+    <h2>Mis campañas</h2>
+    {% if campanas %}
+      <ul class="lista">
+        {% for c in campanas %}
+          <li>
+            <span class="li-main">{{ c.campana_nombre }} <small>({{ c.campana_temporada }})</small></span>
+            <span class="li-sub">{{ c.campana_estado|capitalize }}{% if c.es_gestor %} · <em>gestor</em>{% endif %}
+              {% if c.es_gestor and c.n_mensajes %} · <span class="badge badge-pend">{{ c.n_mensajes }} mensaje{{ 's' if c.n_mensajes > 1 }}</span>{% endif %}</span>
+            <span class="li-actions">
+              <a class="btn btn-small" href="{{ url_for('public.campana', campana_id=c.campana_id) }}">Ver</a>
+              {% if c.es_gestor or current_user.rol == 'ADM' %}
+                <a class="btn btn-small" href="{{ url_for('campanas.gestion_campanas', campana=c.campana_id) }}">Gestionar campaña</a>
+              {% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No participas en ninguna campaña.</p>
+    {% endif %}
+    <a class="btn btn-small btn-primary" href="{{ url_for('campanas.gestion_campanas') }}">Gestión de campañas</a>
+  </section>
+
+  <section class="card block">
+    <h2>Mis bandas</h2>
+    {% if bandas %}
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Nombre banda</th><th>Tipo</th><th>Campaña</th><th>Reglas</th><th>Año</th></tr></thead>
+          <tbody>
+            {% for b in bandas %}
+              <tr class="{{ 'fila-baja' if b.banda_estado != 1 }}">
+                <td><a href="{{ url_for('bandas.ver', banda_id=b.banda_id) }}">{{ b.banda_nombre }}</a>
+                  {% if b.banda_estado != 1 %}<span class="badge">{{ estados_banda.get(b.banda_estado, b.banda_estado) }}</span>{% endif %}</td>
+                <td>{{ b.banda_tipo }}</td>
+                <td>{{ b.campana_nombre }}</td>
+                <td>{{ b.regla_descripcion or '—' }}</td>
+                <td>{{ b.campana_temporada }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">Aún no tienes bandas.</p>
+    {% endif %}
+    <a class="btn btn-small btn-primary" href="{{ url_for('bandas.nueva') }}">+ Crear nueva banda</a>
+  </section>
+
+  <section class="card block">
+    <h2>Mis datos</h2>
+    <form method="post" action="{{ url_for('dashboard.perfil_editar') }}" class="form">
+      <label>Nombre <input type="text" name="nombre" maxlength="100" value="{{ datos.usuario_nombre if datos }}" required></label>
+      <label>Email <input type="email" name="email" maxlength="150" value="{{ datos.usuario_email if datos }}" required></label>
+      <button class="btn btn-primary btn-small" type="submit">Guardar datos</button>
+    </form>
+  </section>
+</div>
+
+{% if current_user.rol == 'ADM' %}
+<section class="admin-block">
+  <h2>Opciones de administrador</h2>
+  <div class="admin-buttons">
+    <a class="btn" href="{{ url_for('admin.reglamentos') }}">Reglamentos</a>
+    <a class="btn {{ 'btn-primary' if n_notif }}" href="{{ url_for('admin.notificaciones') }}">
+      Notificaciones{% if n_notif %} ({{ n_notif }}){% endif %}
+    </a>
+    <a class="btn" href="{{ url_for('admin.backup_sql') }}"
+       title="Descargar una copia de seguridad de toda la base de datos (fichero .sql restaurable)">💾 Copia de seguridad BBDD</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

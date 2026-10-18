@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Acta · {{ bt.campana_nombre }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Acta de batalla nº {{ bt.batalla_orden }} · {{ bt.campana_nombre }}</h1>
+  <a class="btn" href="{{ url_for('public.batallas', campana_id=bt.campana_id) }}">← Volver a batallas</a>
+</div>
+<p class="hint">
+  <span class="badge {{ 'badge-ok' if bt.batalla_estado == 1 else 'badge-pend' }}">{{ estados.get(bt.batalla_estado) }}</span>
+  El acta es informativa: no modifica las bandas.
+</p>
+
+<form method="post" class="form acta">
+  <section class="card block">
+    <h2>Datos de la batalla</h2>
+    <div class="form-fila">
+      <label>Fecha <input type="date" name="fecha" value="{{ bt.batalla_fecha.isoformat() }}" {{ 'disabled' if not puede_editar }} required></label>
+      <label>Escenario <input type="text" name="escenario" maxlength="50" value="{{ bt.batalla_escenario }}" {{ 'disabled' if not puede_editar }} required></label>
+    </div>
+
+    <h3>Bandas implicadas</h3>
+    {% if implicadas %}
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Banda</th><th>Usuario</th><th>Ganancias</th><th>Miembros muertos o lisiados</th><th>Ganador</th>{% if puede_editar %}<th></th>{% endif %}</tr></thead>
+          <tbody>
+            {% for i in implicadas %}
+              {% set k = i.batalla_banda_id %}
+              <tr>
+                <td><a href="{{ url_for('bandas.ver', banda_id=i.banda_id) }}">{{ i.banda_nombre }}</a><br><small>{{ i.banda_tipo }}</small></td>
+                <td>{{ i.usuario_nombre or '—' }}</td>
+                <td><input type="number" name="ganancias_{{ k }}" value="{{ i.batalla_banda_ganancias }}" class="input-corto" {{ 'disabled' if not puede_editar }}></td>
+                <td><input type="text" name="bajas_{{ k }}" maxlength="1000"
+                           value="{{ i.batalla_banda_info.get('bajas', '') if i.batalla_banda_info is mapping else '' }}"
+                           placeholder="p. ej. Klaus (muerto), Hans (lisiado)" {{ 'disabled' if not puede_editar }}></td>
+                <td class="centro"><input type="checkbox" name="ganador_{{ k }}" value="1" {{ 'checked' if i.batalla_banda_ganador }} {{ 'disabled' if not puede_editar }}></td>
+                {% if puede_editar %}
+                  <td><button class="btn btn-small btn-danger" name="accion" value="quitar:{{ k }}"
+                              onclick="return confirm('¿Quitar esta banda del acta?');">Quitar</button></td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">Aún no hay bandas vinculadas.</p>
+    {% endif %}
+
+    {% if puede_editar and disponibles %}
+      <div class="inline-form">
+        <select name="banda_id" aria-label="Banda a vincular">
+          {% for d in disponibles %}<option value="{{ d.banda_id }}">{{ d.banda_nombre }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-small" name="accion" value="anadir">+ Vincular banda</button>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card block">
+    <h2>Comentarios</h2>
+    <textarea name="observaciones" rows="5" {{ 'disabled' if not puede_editar }}>{{ bt.batalla_observaciones or '' }}</textarea>
+  </section>
+
+  {% if puede_editar %}
+    <div class="form-actions">
+      <button class="btn btn-primary" name="accion" value="guardar">Guardar</button>
+      <button class="btn" name="accion" value="confirmar"
+              onclick="return confirm('¿Confirmar el acta? Después solo el comisario podrá reabrirla.');">Guardar y confirmar</button>
+      {% if com %}
+        <button class="btn btn-danger" name="accion" value="eliminar" formnovalidate
+                onclick="return confirm('¿Eliminar esta batalla y su acta?');">Eliminar batalla</button>
+      {% endif %}
+    </div>
+  {% elif com and bt.batalla_estado == 1 %}
+    <div class="form-actions">
+      <button class="btn" name="accion" value="reabrir">Reabrir acta (comisario)</button>
+    </div>
+  {% endif %}
+</form>
+{% endblock %}

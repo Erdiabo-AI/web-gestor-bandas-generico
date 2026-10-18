@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Nueva banda — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="form-wrap">
+  <h1>Nueva banda</h1>
+  {% if campanas %}
+    <form method="post" action="{{ url_for('bandas.nueva') }}" class="form">
+      <label>Nombre de la banda
+        <input type="text" name="nombre" maxlength="150" value="{{ form.get('nombre', '') }}" required autofocus>
+      </label>
+      <label>Banda (tipo)
+        <input type="text" name="tipo" maxlength="150" value="{{ form.get('tipo', '') }}"
+               placeholder="p. ej. Mercenarios de Reikland" required>
+      </label>
+      <label>Campaña
+        <select name="campana_id" required>
+          <option value="">— Elige —</option>
+          {% for c in campanas %}
+            <option value="{{ c.campana_id }}" {{ 'selected' if form.get('campana_id') == c.campana_id|string }}>
+              {{ c.campana_nombre }} ({{ c.campana_temporada }}) · {{ c.regla_descripcion or 'sin reglas' }} · {{ c.campana_estado|capitalize }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Confirmar</button>
+        <a class="btn btn-ghost-dark" href="{{ url_for('dashboard.perfil') }}">Cancelar</a>
+      </div>
+    </form>
+    <p class="hint">Solo aparecen campañas en Inscripción o Abiertas donde no tengas ya una banda activa.
+      Si tu banda queda Destruida, podrás crear otra.</p>
+  {% else %}
+    <p class="empty">No hay campañas disponibles: deben estar en Inscripción o Abiertas, y no
+      puedes tener ya una banda activa en ellas.</p>
+    <a class="btn" href="{{ url_for('dashboard.perfil') }}">← Volver</a>
+  {% endif %}
+</div>
+{% endblock %}

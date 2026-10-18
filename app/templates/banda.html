@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}{{ b.banda_nombre }} — {{ app_name }}{% endblock %}
+
+{% macro fila_miembro(ln, acciones) %}
+  <tr class="{{ 'fila-baja' if ln.banda_lin_estado not in (0, 1) }}">
+    <td>{{ ln.banda_lin_orden }}</td>
+    <td>{{ ln.banda_lin_nombre }}
+      {% if ln.banda_lin_estado %}<span class="badge {{ 'badge-pend' if ln.banda_lin_estado == 1 }}">{{ estados_miembro.get(ln.banda_lin_estado) }}</span>{% endif %}</td>
+    <td>{{ ln.banda_lin_subtipo }}</td>
+    <td>{{ ln.banda_lin_cantidad }}</td>
+    {% for s in stats %}
+      <td class="col-stat">{{ ln.banda_lin_stats.get(s, '') if ln.banda_lin_stats is mapping else '' }}</td>
+    {% endfor %}
+    <td>
+      {% if ln.banda_lin_armamento is iterable and ln.banda_lin_armamento is not string %}
+        {% for a in ln.banda_lin_armamento %}{{ a.nombre }} <small>({{ a.precio }})</small>{{ ', ' if not loop.last }}{% endfor %}
+      {% endif %}
+    </td>
+    <td>{{ ln.banda_lin_experiencia or 0 }}</td>
+    <td>{{ ln.banda_lin_coste }}{% if ln.banda_lin_cantidad > 1 %} <small>×{{ ln.banda_lin_cantidad }} = {{ ln.banda_lin_coste * ln.banda_lin_cantidad }}</small>{% endif %}</td>
+    <td>{{ ln.banda_lin_notas or '' }}{% if ln.banda_lin_observaciones %}<br><small>{{ ln.banda_lin_observaciones }}</small>{% endif %}</td>
+    {% if acciones %}
+      <td class="acciones">
+        <button class="btn btn-small" type="button" onclick="editarMiembro('{{ ln.banda_lin_id }}')">Editar</button>
+        {% if ln.banda_lin_estado in (0, 1) %}
+          <form method="post" action="{{ url_for('bandas.despedir', banda_id=b.banda_id, lin_id=ln.banda_lin_id) }}"
+                onsubmit="return confirm('¿Despedir a este miembro? Pasará a la lista de bajas.');">
+            <button class="btn btn-small btn-danger" type="submit">Despedir</button>
+          </form>
+        {% endif %}
+      </td>
+    {% endif %}
+  </tr>
+{% endmacro %}
+
+{% macro cabecera() %}
+  <tr>
+    <th>Orden</th><th>Nombre</th><th>Tipo</th><th>Cant.</th>
+    {% for s in stats %}<th class="col-stat">{{ s|upper }}</th>{% endfor %}
+    <th>Armamento</th><th>Exp.</th><th>Coste</th><th>Notas</th>
+    {% if puede_editar %}<th></th>{% endif %}
+  </tr>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">{{ b.banda_nombre }}
+    {% if b.banda_estado != 1 %}<span class="badge">{{ estados_banda.get(b.banda_estado) }}</span>{% endif %}</h1>
+  <a class="btn" href="{{ url_for('public.campana', campana_id=b.campana_id) }}">← Volver a campaña</a>
+</div>
+
+<section class="card" id="datos-banda">
+  <div class="vista-datos">
+    <div class="equipo-datos">
+      <div><span class="lbl">Usuario</span>{{ b.usuario_nombre or '—' }}</div>
+      <div><span class="lbl">Banda</span>{{ b.banda_tipo }}</div>
+      <div><span class="lbl">Campaña</span>{{ b.campana_nombre }}</div>
+      <div><span class="lbl">Tesorería</span><strong class="{{ 'negativo' if (b.banda_tesoreria or 0) < 0 }}">{{ b.banda_tesoreria or 0 }}</strong></div>
+      <div><span class="lbl">Coste</span>{{ b.banda_valor_banda or 0 }}</div>
+      <div><span class="lbl">Estado</span>{{ estados_banda.get(b.banda_estado, b.banda_estado) }}</div>
+      {% if puede_editar %}
+        <button class="btn btn-small" type="button" onclick="document.getElementById('datos-banda').classList.add('editando')">Editar datos</button>
+      {% endif %}
+    </div>
+    {% if b.banda_observaciones %}<p class="art-body"><strong>Observaciones:</strong> {{ b.banda_observaciones }}</p>{% endif %}
+  </div>
+  {% if puede_editar %}
+    <form class="form edicion-datos" method="post" action="{{ url_for('bandas.editar', banda_id=b.banda_id) }}">
+      <div class="form-fila">
+        <label>Nombre <input type="text" name="nombre" maxlength="150" value="{{ b.banda_nombre }}" required></label>
+        <label>Banda <input type="text" name="tipo" maxlength="150" value="{{ b.banda_tipo }}" required></label>
+        <label>Tesorería <input type="number" name="tesoreria" value="{{ b.banda_tesoreria or 0 }}" required></label>
+        <label>Estado
+          <select name="estado">
+            {% for k, v in estados_banda.items() %}<option value="{{ k }}" {{ 'selected' if b.banda_estado == k }}>{{ v }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Observaciones <textarea name="observaciones" rows="2">{{ b.banda_observaciones or '' }}</textarea></label>
+      <div class="form-actions">
+        <button class="btn btn-primary btn-small" type="submit">Guardar</button>
+        <button class="btn btn-small" type="button" onclick="document.getElementById('datos-banda').classList.remove('editando')">Cancelar</button>
+      </div>
+      <p class="hint">Los cambios de tesorería quedan anotados en el historial.</p>
+    </form>
+  {% endif %}
+</section>
+
+<div class="page-head">
+  <h2>Miembros de la banda</h2>
+  {% if puede_editar %}
+    <button class="btn btn-primary" type="button" onclick="editarMiembro(null)">+ Contratar miembro</button>
+  {% endif %}
+</div>
+{% if plantilla %}
+  <div class="tabla-scroll">
+    <table class="tabla">
+      <thead>{{ cabecera() }}</thead>
+      <tbody>{% for ln in plantilla %}{{ fila_miembro(ln, puede_editar) }}{% endfor %}</tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="empty">La banda aún no tiene miembros.</p>
+{% endif %}
+
+{% if bajas %}
+  <details class="bloque-plegable">
+    <summary>Bajas ({{ bajas|length }}): despedidos y muertos</summary>
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead>{{ cabecera() }}</thead>
+        <tbody>{% for ln in bajas %}{{ fila_miembro(ln, puede_editar) }}{% endfor %}</tbody>
+      </table>
+    </div>
+  </details>
+{% endif %}
+
+<details class="bloque-plegable" {{ 'open' if historial|length <= 5 }}>
+  <summary>Historial ({{ historial|length }})</summary>
+  {% if historial %}
+    <ul class="historial">{% for h in historial %}<li>{{ h }}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="empty">Sin acciones registradas.</p>
+  {% endif %}
+</details>
+
+{% if puede_editar %}
+<div class="modal" id="modal-miembro">
+  <div class="modal-box modal-wide">
+    <div class="modal-head">
+      <h3 id="m-titulo">Contratar miembro</h3>
+      <button type="button" data-cerrar>✕</button>
+    </div>
+    <form method="post" id="m-form" class="form" action="{{ url_for('bandas.contratar', banda_id=b.banda_id) }}">
+      <div class="form-fila">
+        <label class="corto">Orden <input type="number" name="orden" id="m-orden" min="1" required></label>
+        <label>Nombre <input type="text" name="nombre" id="m-nombre" maxlength="150" required></label>
+        <label>Tipo <input type="text" name="subtipo" id="m-subtipo" maxlength="150" required placeholder="p. ej. Capitán"></label>
+        <label class="corto">Cantidad <input type="number" name="cantidad" id="m-cantidad" min="1" value="1" required></label>
+        <label class="corto">Precio <input type="number" name="precio" id="m-precio" min="0" value="0" required></label>
+      </div>
+
+      {% if stats %}
+        <fieldset class="stats-fila">
+          <legend>Stats{% if b.regla_descripcion %} ({{ b.regla_descripcion }}){% endif %}</legend>
+          {% for s in stats %}
+            {% set d = defectos.get(s) %}
+            <label class="stat">{{ s|upper }}
+              <input type="{{ 'number' if d is number and d is not sameas true and d is not sameas false else 'text' }}"
+                     {% if d is number %}step="any"{% endif %}
+                     name="stat_{{ loop.index0 }}" data-stat="{{ s }}" data-defecto="{{ d if d is not none else '' }}">
+            </label>
+          {% endfor %}
+        </fieldset>
+      {% else %}
+        <p class="hint">El reglamento de la campaña no define stats.</p>
+      {% endif %}
+
+      <fieldset>
+        <legend>Armamento</legend>
+        <div id="m-armamento"></div>
+        <button class="btn btn-small" type="button" onclick="filaArma('', 0)">+ Añadir arma o equipo</button>
+      </fieldset>
+
+      <p class="coste-total">Coste del miembro: <strong id="m-coste">0</strong>
+        <span id="m-coste-total"></span>
+        <span class="hint" id="m-aviso-cobro"></span></p>
+
+      <div class="form-fila">
+        <label class="corto">Experiencia <input type="number" name="experiencia" id="m-experiencia" min="0" value="0"></label>
+        <label id="m-estado-wrap">Estado
+          <select name="estado" id="m-estado">
+            {% for k, v in estados_miembro.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Notas <input type="text" name="notas" id="m-notas"></label>
+      <label>Observaciones <textarea name="observaciones" id="m-observaciones" rows="2"></textarea></label>
+      <button class="btn btn-primary" type="submit" id="m-boton">Contratar</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if puede_editar %}
+<script id="miembros-datos" type="application/json">{{ miembros|tojson }}</script>
+<script>
+  var MIEMBROS = JSON.parse(document.getElementById('miembros-datos').textContent);
+  var URL_CONTRATAR = {{ url_for('bandas.contratar', banda_id=b.banda_id)|tojson }};
+  var URL_EDITAR = {{ url_for('bandas.editar_miembro', banda_id=b.banda_id, lin_id='00000000-0000-0000-0000-000000000000')|tojson }};
+  var SIGUIENTE_ORDEN = {{ siguiente_orden }};
+  var costeInicial = 0;
+
+  function $(id) { return document.getElementById(id); }
+
+  function filaArma(nombre, precio) {
+    var fila = document.createElement('div');
+    fila.className = 'arma-fila';
+    fila.innerHTML = '<input type="text" name="arm_nombre" maxlength="100" placeholder="Nombre">' +
+                     '<input type="number" name="arm_precio" min="0" placeholder="Precio">' +
+                     '<button class="btn btn-small btn-danger" type="button" title="Quitar">✕</button>';
+    fila.children[0].value = nombre;
+    fila.children[1].value = precio;
+    fila.children[2].addEventListener('click', function () { fila.remove(); recalcular(); });
+    $('m-armamento').appendChild(fila);
+    recalcular();
+  }
+
+  function recalcular() {
+    var coste = parseInt($('m-precio').value || '0', 10) || 0;
+    document.querySelectorAll('#m-armamento input[name=arm_precio]').forEach(function (i) {
+      coste += parseInt(i.value || '0', 10) || 0;
+    });
+    var cant = parseInt($('m-cantidad').value || '1', 10) || 1;
+    $('m-coste').textContent = coste;
+    $('m-coste-total').textContent = cant > 1 ? ('× ' + cant + ' = ' + (coste * cant)) : '';
+    var esNuevo = !$('m-form').dataset.editando;
+    var cobro = esNuevo ? coste * cant : coste * cant - costeInicial;
+    $('m-aviso-cobro').textContent = cobro > 0 ? ('· se descontarán ' + cobro + ' de la tesorería') : '';
+  }
+
+  function editarMiembro(id) {
+    var m = id ? MIEMBROS[id] : null;
+    var form = $('m-form');
+    form.action = id ? URL_EDITAR.replace('00000000-0000-0000-0000-000000000000', id) : URL_CONTRATAR;
+    form.dataset.editando = id ? '1' : '';
+    $('m-titulo').textContent = id ? 'Editar miembro' : 'Contratar miembro';
+    $('m-boton').textContent = id ? 'Guardar cambios' : 'Contratar';
+    $('m-estado-wrap').style.display = id ? '' : 'none';
+    $('m-orden').value = m ? m.orden : SIGUIENTE_ORDEN;
+    $('m-nombre').value = m ? m.nombre : '';
+    $('m-subtipo').value = m ? m.subtipo : '';
+    $('m-cantidad').value = m ? m.cantidad : 1;
+    $('m-precio').value = m ? m.precio : 0;
+    $('m-experiencia').value = m ? m.experiencia : 0;
+    $('m-estado').value = m ? m.estado : 0;
+    $('m-notas').value = m ? m.notas : '';
+    $('m-observaciones').value = m ? m.observaciones : '';
+    document.querySelectorAll('[data-stat]').forEach(function (i) {
+      var v = m && m.stats && (i.dataset.stat in m.stats) ? m.stats[i.dataset.stat] : i.dataset.defecto;
+      i.value = (v === null || v === undefined) ? '' : v;
+    });
+    $('m-armamento').innerHTML = '';
+    (m ? m.armamento : []).forEach(function (a) { filaArma(a.nombre || '', a.precio || 0); });
+    costeInicial = m ? (m.precio + m.armamento.reduce(function (s, a) { return s + (parseInt(a.precio, 10) || 0); }, 0)) * m.cantidad : 0;
+    recalcular();
+    abrirModal('modal-miembro');
+  }
+
+  ['m-precio', 'm-cantidad'].forEach(function (id) { $(id).addEventListener('input', recalcular); });
+  $('m-armamento').addEventListener('input', recalcular);
+</script>
+{% endif %}
+{% endblock %}

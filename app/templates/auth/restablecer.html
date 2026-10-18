@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Nueva contraseña — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="form-wrap">
+  <h1>Nueva contraseña</h1>
+  <p class="hint">Hola, {{ nombre }}. Establece tu nueva contraseña (mínimo 8 caracteres).</p>
+  <form method="post" class="form">
+    <label>Nueva contraseña
+      <input type="password" name="password" minlength="8" required autofocus>
+    </label>
+    <label>Repite la contraseña
+      <input type="password" name="confirmar" minlength="8" required>
+    </label>
+    <button class="btn btn-primary" type="submit">Guardar contraseña</button>
+  </form>
+</div>
+{% endblock %}

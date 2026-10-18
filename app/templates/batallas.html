@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Batallas · {{ c.campana_nombre }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Batallas de campaña · {{ c.campana_nombre }}</h1>
+  {% if puede_crear %}
+    <form method="post" action="{{ url_for('batallas.crear', campana_id=c.campana_id) }}">
+      <button class="btn btn-primary" type="submit">Crear batalla</button>
+    </form>
+  {% endif %}
+</div>
+
+<form method="get" class="inline-form filtro">
+  <label for="f-banda">Filtrar por banda</label>
+  <select id="f-banda" name="banda" onchange="this.form.submit()">
+    <option value="">Todas</option>
+    {% for b in bandas %}
+      <option value="{{ b.banda_id }}" {{ 'selected' if filtro == b.banda_id|string }}>{{ b.banda_nombre }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button class="btn btn-small" type="submit">Filtrar</button></noscript>
+</form>
+
+{% if batallas %}
+  <div class="tabla-scroll">
+    <table class="tabla">
+      <thead>
+        <tr><th>Orden</th><th>Escenario</th><th>Fecha</th><th>Oponentes</th><th>Ganador</th><th>Estado</th><th>Observaciones</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for bt in batallas %}
+          <tr>
+            <td>{{ bt.batalla_orden }}</td>
+            <td>{{ bt.batalla_escenario }}</td>
+            <td>{{ bt.batalla_fecha.strftime('%d/%m/%Y') if bt.batalla_fecha }}</td>
+            <td>{{ bt.oponentes or '—' }}</td>
+            <td>{{ bt.batalla_ganador or '' }}</td>
+            <td><span class="badge {{ 'badge-ok' if bt.batalla_estado == 1 else 'badge-pend' }}">{{ estados.get(bt.batalla_estado) }}</span></td>
+            <td>{{ bt.batalla_observaciones or '' }}</td>
+            <td><a class="btn btn-small" href="{{ url_for('batallas.acta', batalla_id=bt.batalla_id) }}">Acta</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="empty">{{ 'No hay batallas de esta banda.' if filtro else 'Todavía no hay batallas registradas.' }}</p>
+{% endif %}
+
+<div class="barra-botones">
+  <a class="btn" href="{{ url_for('public.campana', campana_id=c.campana_id) }}">← Volver</a>
+</div>
+{% endblock %}

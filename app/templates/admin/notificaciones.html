@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Notificaciones — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Notificaciones</h1>
+  <div>
+    <form method="post" action="{{ url_for('admin.notificaciones_leidas') }}" style="display:inline">
+      <button class="btn btn-small" type="submit">Marcar todas leídas</button>
+    </form>
+    <a class="btn" href="{{ url_for('dashboard.perfil') }}">← Volver</a>
+  </div>
+</div>
+
+{% if notifs %}
+  {% for n in notifs %}
+    <article class="card notif {{ 'notif-nueva' if not n.leida }}">
+      <header class="art-head">
+        <h2>
+          {% if n.notificacion_tipo == 'RECUPERACION' %}
+            <span class="badge badge-pend">Recuperación</span>
+          {% else %}
+            <span class="badge badge-ok">Contacto</span>
+          {% endif %}
+          {{ n.remitente_nombre or n.usuario_nombre or n.remitente_email or 'Anónimo' }}
+        </h2>
+        <span class="art-meta">
+          {% if not n.leida %}<span class="badge badge-pend">nueva</span>{% endif %}
+          <time>{{ n.fecha.strftime('%d/%m/%Y %H:%M') if n.fecha }}</time>
+        </span>
+      </header>
+      <p class="art-body">{{ n.mensaje }}</p>
+      <p class="hint">
+        {% if n.remitente_email %}Responder a: <strong>{{ n.remitente_email }}</strong>{% endif %}
+        {% if n.usuario_nombre %} · usuario registrado: {{ n.usuario_nombre }}{% endif %}
+      </p>
+      <div class="acciones">
+        {% if not n.leida %}
+        <form method="post" action="{{ url_for('admin.notificacion_leida', nid=n.notificacion_id) }}" style="display:inline">
+          <button class="btn btn-small" type="submit">Marcar leída</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{{ url_for('admin.notificacion_borrar', nid=n.notificacion_id) }}" style="display:inline"
+              onsubmit="return confirm('¿Eliminar esta notificación?');">
+          <button class="btn btn-small btn-danger" type="submit">Eliminar</button>
+        </form>
+      </div>
+    </article>
+  {% endfor %}
+{% else %}
+  <p class="empty">No hay notificaciones.</p>
+{% endif %}
+{% endblock %}

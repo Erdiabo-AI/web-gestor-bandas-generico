@@ -1,0 +1,400 @@
+:root {
+  --bg: #e8e4bc;   /* beige de los mockups */
+  --surface: #ffffff;
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --bar: #3f3f46;
+  --accent: #7c3aed;
+  --accent-ink: #fff;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1.25rem;
+  background: var(--bar);
+  color: #fff;
+}
+.brand { color: #fff; text-decoration: none; font-size: 1.25rem; font-weight: 700; }
+.user-nav { display: flex; align-items: center; gap: .5rem; }
+.user-name { font-weight: 600; margin-right: .25rem; }
+
+/* Botones */
+.btn {
+  display: inline-block;
+  padding: .45rem .8rem;
+  border-radius: .5rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+
+/* Flashes */
+.flashes { padding: .5rem 1.25rem 0; }
+.flash { padding: .6rem .9rem; border-radius: .5rem; margin-bottom: .5rem; font-size: .9rem; }
+.flash-success { background: #dcfce7; color: #166534; }
+.flash-danger  { background: #fee2e2; color: #991b1b; }
+.flash-warning { background: #fef9c3; color: #854d0e; }
+.flash-info    { background: #dbeafe; color: #1e40af; }
+
+/* Contenido */
+.content { flex: 1; padding: 1.25rem; max-width: 1100px; margin: 0 auto; width: 100%; }
+.page-title { margin-top: 0; }
+
+/* Dos columnas (portada) */
+.two-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem; }
+.col-title { font-size: 1.6rem; margin: 0 0 .75rem; }
+.col-narrow { min-width: 240px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.card-head { display: flex; justify-content: space-between; align-items: baseline; }
+.card-head h2 { margin: 0; font-size: 1.2rem; }
+.card-head time { color: var(--muted); font-size: .85rem; }
+.card-lead { font-weight: 600; margin: .4rem 0; }
+.card-body { color: var(--muted); margin: 0; }
+.noticia-completa { white-space: pre-line; }
+.noticia-toggle { margin-top: .4rem; }
+.merc-obs { color: var(--muted); font-size: .78rem; }
+.col-sub { color: var(--muted); font-size: .78rem; }
+/* VAE resaltado en la ficha del equipo (texto en blanco sobre el acento) */
+.vae-destacado { background: var(--accent); color: #fff; padding: .2rem .55rem;
+                 border-radius: .5rem; font-weight: 700; }
+.equipo-datos .vae-destacado .lbl, .vae-destacado .lbl { color: #fff; }
+/* Bajas del equipo: filas apagadas */
+.bajas-equipo td { color: var(--muted); }
+
+/* Gráficos de estadísticas (barras y sectores, sin librerías) */
+.grafico-botones { float: right; display: inline-flex; gap: .3rem; }
+.grafico { margin-top: .6rem; }
+.g-fila { display: grid; grid-template-columns: minmax(6rem, 1fr) 3fr auto; gap: .5rem;
+          align-items: center; margin: .25rem 0; font-size: .85rem; }
+.g-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-pista { background: var(--line); border-radius: .3rem; height: .9rem; overflow: hidden; }
+.g-barra { display: block; height: 100%; border-radius: .3rem; min-width: 2px; }
+.g-valor { font-weight: 700; min-width: 1.6rem; text-align: right; }
+.g-sectores { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.g-donut { width: 130px; height: 130px; flex-shrink: 0; }
+.g-leyenda { list-style: none; margin: 0; padding: 0; font-size: .82rem; }
+.g-leyenda li { margin: .2rem 0; }
+.g-color { display: inline-block; width: .8rem; height: .8rem; border-radius: .2rem;
+           margin-right: .4rem; vertical-align: -.1rem; }
+
+/* Tabla de incentivos de la portada */
+.incentivos summary { cursor: pointer; }
+.incentivo-desc { white-space: pre-line; color: var(--muted); font-size: .82rem;
+                  margin: .35rem 0 .2rem; }
+.incentivo-coste { font-size: .8rem; }
+
+.liga-list { list-style: none; margin: 0; padding: 0; }
+.liga-list li { border-bottom: 1px solid var(--line); }
+.liga-list a {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: .6rem .3rem; text-decoration: none; color: var(--ink);
+}
+.liga-list a:hover { background: #faf5ff; }
+.liga-season { color: var(--muted); }
+
+/* Bloque de jugadores estrella (portada) */
+.estrellas-box { max-height: 340px; overflow-y: auto; border: 1px solid var(--line); border-radius: .5rem; }
+.estrellas th, .estrellas td { text-align: center; padding: .35rem .4rem; font-size: .8rem; }
+.estrellas .col-eq { text-align: left; white-space: nowrap; }
+.estrellas thead th { position: sticky; top: 0; }
+
+.empty { color: var(--muted); }
+
+/* Grid de 4 bloques (perfil) */
+.grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.block h2 { margin-top: 0; font-size: 1.1rem; }
+.admin-block { margin-top: 1.5rem; }
+.admin-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+/* Formularios */
+.form-wrap { max-width: 420px; margin: 1rem auto; }
+.form { display: flex; flex-direction: column; gap: .8rem; }
+.form label { display: flex; flex-direction: column; gap: .3rem; font-size: .9rem; font-weight: 600; }
+.form input {
+  padding: .55rem .7rem; border: 1px solid var(--line);
+  border-radius: .5rem; font-size: 1rem;
+}
+.form-actions { display: flex; gap: .5rem; }
+.form-foot { margin-top: 1rem; color: var(--muted); }
+
+/* Footer */
+.footer {
+  display: flex; gap: 2rem; justify-content: center;
+  padding: 1rem; border-top: 1px solid var(--line);
+  background: var(--surface); color: var(--muted);
+}
+.footer a { color: var(--muted); text-decoration: none; }
+.footer a:hover { color: var(--ink); }
+
+/* Tablas */
+.tabla { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; overflow: hidden; }
+.tabla th, .tabla td { padding: .5rem .6rem; text-align: left; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.tabla th { background: #fafafa; font-size: .8rem; text-transform: uppercase; letter-spacing: .02em; color: var(--muted); }
+.tabla tr:last-child td { border-bottom: none; }
+.btn-small { padding: .3rem .55rem; font-size: .8rem; }
+.inline-form { display: flex; gap: .3rem; align-items: center; }
+.inline-form select { padding: .3rem; border: 1px solid var(--line); border-radius: .4rem; }
+.hint { color: var(--muted); font-size: .85rem; margin-top: .75rem; }
+.form select { padding: .55rem .7rem; border: 1px solid var(--line); border-radius: .5rem; font-size: 1rem; background: #fff; }
+
+/* Listas del perfil */
+.lista { list-style: none; margin: 0 0 .6rem; padding: 0; }
+.lista li { border-bottom: 1px solid var(--line); padding: .5rem 0; }
+.lista li:last-child { border-bottom: none; }
+.lista a { text-decoration: none; color: var(--ink); display: block; }
+.lista a:hover .li-main { color: var(--accent); }
+.li-main { display: block; font-weight: 600; }
+.li-sub { display: block; font-size: .8rem; color: var(--muted); }
+.li-actions { display: inline-flex; gap: .3rem; margin-top: .3rem; }
+
+/* Página equipo */
+.equipo-datos { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; align-items: center; }
+.equipo-datos .lbl { display: block; font-size: .7rem; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }
+.acciones { white-space: nowrap; display: flex; gap: .3rem; }
+.btn-danger { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+.compra { margin-bottom: 1rem; }
+.compra-btns { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+
+/* Modales */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: flex-start; justify-content: center; padding: 2rem 1rem; z-index: 50; overflow-y: auto; }
+.modal.open { display: flex; }
+.modal-box { background: var(--surface); border-radius: .75rem; padding: 1.1rem; width: 100%; max-width: 420px; }
+.modal-box.modal-wide { max-width: 720px; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
+.modal-head h3 { margin: 0; font-size: 1.1rem; }
+.modal-head button { background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+
+/* Acta */
+.acta-teams { margin: .2rem 0 0; font-size: 1.1rem; color: var(--muted); }
+.bloque-title { font-size: 1rem; margin: 1.25rem 0 .5rem; padding-bottom: .25rem; border-bottom: 1px solid var(--line); }
+.acta-b1 td:first-child { color: var(--muted); }
+input.mini { width: 3.5rem; padding: .3rem; border: 1px solid var(--line); border-radius: .4rem; text-align: center; }
+.mini-sel { padding: .3rem; border: 1px solid var(--line); border-radius: .4rem; max-width: 8rem; }
+.acta-jug th, .acta-jug td { text-align: center; padding: .35rem .3rem; }
+.acta-jug .col-eq { text-align: left; white-space: nowrap; }
+.acta-b1 .ing { font-weight: 700; color: #166534; }
+.chk { font-weight: 400; color: var(--muted); display: inline-flex; gap: .4rem; align-items: center; }
+.cronica { width: 100%; padding: .6rem; border: 1px solid var(--line); border-radius: .5rem; font: inherit; }
+.acta-actions { display: flex; gap: .6rem; margin-top: 1rem; }
+form[inert] { opacity: .7; }
+
+/* Atributo reducido por lesión */
+.stat-worse { color: #b91c1c; font-weight: 700; background: #fee2e2; }
+
+/* Panel del comisario */
+.com-panel { border-left: 4px solid var(--accent); margin-bottom: 1.25rem; }
+
+/* Columna de habilidades en la plantilla */
+.col-habs { text-align: left !important; font-size: .75rem; color: var(--muted); max-width: 260px; min-width: 160px; white-space: normal; }
+.col-habs strong { color: var(--accent); }
+
+/* Logos de raza */
+.logo-mini { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; margin-right: .4rem; }
+.logo-eq { width: 40px; height: 40px; object-fit: contain; vertical-align: middle; margin-right: .5rem; }
+
+/* Clasificación */
+.conf-title { font-size: 1.05rem; margin: 1rem 0 .4rem; color: var(--accent); }
+.tabla-wrap { overflow-x: auto; }
+.clasif { min-width: 520px; }
+.clasif th, .clasif td { text-align: center; padding: .45rem .5rem; }
+.clasif .col-eq { text-align: left; white-space: nowrap; }
+.clasif .col-eq a { color: var(--ink); text-decoration: none; font-weight: 600; }
+.clasif .col-eq a:hover { color: var(--accent); }
+.clasif .pos { color: var(--muted); font-weight: 700; }
+.clasif .pts { font-weight: 700; background: #faf5ff; }
+.clasif tbody tr:nth-child(odd) { background: #fcfcfd; }
+.liga-nav { display: flex; gap: .5rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+
+/* CRUD administración */
+.crud-block { margin-bottom: 1.25rem; }
+.crud-title { margin: 0; font-size: 1.05rem; }
+.crud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .7rem; }
+.crud-grid label { display: flex; flex-direction: column; gap: .2rem; font-size: .8rem; font-weight: 600; }
+.crud-grid input, .crud-grid select, .crud-grid textarea {
+  padding: .45rem; border: 1px solid var(--line); border-radius: .4rem; font: inherit; font-weight: 400;
+}
+.crud-grid .full { grid-column: 1 / -1; }
+.crud-actions { margin-top: .4rem; }
+
+/* Play-Off / bracket */
+.bracket { display: flex; gap: 1.5rem; overflow-x: auto; padding-bottom: .5rem; align-items: stretch; }
+.bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 1rem; min-width: 190px; }
+.bracket-round { font-size: .85rem; color: var(--accent); text-align: center; margin: 0; text-transform: uppercase; letter-spacing: .04em; }
+.bracket-match { background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; overflow: hidden; }
+.bm-team { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.bm-team:nth-of-type(2) { border-bottom: none; }
+.bm-team.win { font-weight: 700; background: #faf5ff; }
+.bm-score { font-weight: 700; color: var(--muted); }
+.bm-acta { display: block; text-align: center; font-size: .72rem; padding: .3rem; background: #f3f4f6; color: var(--accent); text-decoration: none; }
+.bm-acta:hover { background: #ede9fe; }
+.bracket-config { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .75rem; margin: .75rem 0; }
+.cfg-match { display: flex; flex-direction: column; gap: .4rem; }
+.cfg-num { font-weight: 700; font-size: .8rem; color: var(--muted); }
+.cfg-match select { padding: .45rem; border: 1px solid var(--line); border-radius: .4rem; font-size: .9rem; }
+
+/* Estadísticas */
+.rankings { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; }
+.ranking h2 { font-size: 1rem; margin: 0 0 .5rem; padding-bottom: .3rem; border-bottom: 2px solid var(--accent); }
+.rank-list { margin: 0; padding-left: 1.4rem; }
+.rank-list li { display: flex; justify-content: space-between; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--line); }
+.rank-list li:last-child { border-bottom: none; }
+.rank-list a { color: var(--ink); text-decoration: none; }
+.rank-list a:hover { color: var(--accent); }
+.rank-val { font-weight: 700; }
+
+/* Boton bloqueado (acta de jornada no abierta) */
+.btn-bloqueado { opacity: .55; cursor: not-allowed; pointer-events: none; }
+
+/* Notificaciones del administrador */
+.notif-nueva { border-left: 4px solid var(--accent); background: #faf5ff; }
+.notif .acciones { margin-top: .5rem; }
+
+/* Periódico */
+.articulo { margin-bottom: 1rem; }
+.art-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.art-head h2 { margin: 0; font-size: 1.2rem; }
+.art-meta { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.art-body { color: var(--ink); margin: .5rem 0 0; white-space: pre-line; }
+
+/* Página / jornadas de partidos */
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.jornada { margin-bottom: 1.25rem; }
+.jornada-title { font-size: 1.1rem; margin: 0 0 .5rem; padding-bottom: .3rem; border-bottom: 2px solid var(--accent); }
+.match-list { list-style: none; margin: 0; padding: 0; }
+.match {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto 1fr auto auto;
+  align-items: center;
+  gap: .6rem;
+  padding: .55rem .7rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  margin-bottom: .4rem;
+}
+.match .team { min-width: 0; }
+.match .team a { color: var(--ink); text-decoration: none; }
+.match .team a:hover { color: var(--accent); }
+.team-local { text-align: right; }
+.team-visit { text-align: left; }
+.match .score { font-weight: 700; min-width: 3rem; text-align: center; color: var(--muted); }
+.match .conf { font-size: .7rem; font-weight: 700; background: #ede9fe; color: var(--accent); border-radius: .4rem; padding: .1rem .35rem; }
+.badge { font-size: .7rem; padding: .15rem .45rem; border-radius: .4rem; background: #f3f4f6; color: var(--muted); white-space: nowrap; }
+.badge-ok { background: #dcfce7; color: #166534; }
+.badge-pend { background: #fef9c3; color: #854d0e; }
+
+/* Responsive */
+.match-pdf { display: inline-flex; gap: .3rem; align-items: center; text-decoration: none; white-space: nowrap; }
+.fecha-form input[type="date"] { padding: .25rem .35rem; border: 1px solid var(--line); border-radius: .4rem; font-size: .8rem; }
+.fecha-partido { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .match { grid-template-columns: 1fr auto 1fr; }
+  .match .conf, .match .match-state, .match .match-pdf { grid-column: 1 / -1; text-align: center; }
+  .two-cols { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ===== Acta: adaptación a móvil ===== */
+/* El overflow:hidden genérico de .tabla (esquinas redondeadas) rompe el
+   position:sticky de las celdas: se anula en la tabla de acciones del acta */
+.tabla.acta-jug { overflow: visible; }
+/* Columnas Nº y Jugador fijas al desplazar la tabla de acciones en horizontal */
+.acta-jug th:first-child, .acta-jug td:first-child {
+  position: sticky; left: 0; z-index: 2; background: var(--surface);
+  width: 2.2rem; min-width: 2.2rem; max-width: 2.2rem;
+}
+.acta-jug .col-eq {
+  position: sticky; left: 2.2rem; z-index: 2; background: var(--surface);
+  box-shadow: 2px 0 0 var(--line);
+}
+.acta-jug thead th:first-child, .acta-jug thead .col-eq { background: #fafafa; z-index: 3; }
+
+@media (max-width: 760px) {
+  /* Inputs compactos y con fuente de 16px (los móviles hacen zoom si es menor) */
+  .acta-jug th, .acta-jug td { padding: .3rem .2rem; font-size: .82rem; }
+  .acta-jug input.mini { width: 2.7rem; padding: .35rem .1rem; font-size: 16px; }
+  .acta-jug .mini-sel { max-width: 8rem; font-size: 16px; }
+  .acta-jug .col-eq { max-width: 8rem; overflow: hidden; text-overflow: ellipsis; }
+  .acta-b1 input.mini, .cronica { font-size: 16px; }
+  .tabla-wrap { -webkit-overflow-scrolling: touch; }
+  /* Botones de guardar/confirmar a ancho completo, cómodos para el pulgar */
+  .acta-actions { display: flex; flex-direction: column; gap: .5rem; }
+  .acta-actions .btn { width: 100%; padding: .7rem; }
+  .page-head { flex-wrap: wrap; gap: .5rem; }
+}
+
+/* Notas de reglas de la raza en la pagina de equipo */
+.raza-notas { margin-top: .6rem; background: #fdf9ef; border-left: 4px solid #d4a017; }
+.raza-notas p { margin: .35rem 0 0; font-size: .88rem; line-height: 1.45; color: #57534e; }
+
+/* ---- gestorbandasgenerico ---- */
+.tabla-scroll { overflow-x: auto; margin-bottom: .75rem; }
+.tabla .col-stat { text-align: center; padding-left: .3rem; padding-right: .3rem; }
+.form textarea { padding: .55rem .7rem; border: 1px solid var(--line); border-radius: .5rem;
+  font-size: .95rem; font-family: inherit; resize: vertical; width: 100%; }
+.form fieldset { border: 1px solid var(--line); border-radius: .5rem; padding: .6rem .8rem; margin: 0; }
+.form legend { font-size: .85rem; font-weight: 700; color: var(--muted); padding: 0 .3rem; }
+.form-fila { display: flex; flex-wrap: wrap; gap: .6rem; }
+.form-fila > label { flex: 1 1 10rem; }
+.form-fila > label.corto { flex: 0 1 6.5rem; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+.barra-botones { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.btn-ghost-dark { background: transparent; border-color: var(--bar); color: var(--ink); }
+.fila-baja td { color: var(--muted); }
+.negativo { color: #b91c1c; }
+.filtro { margin: .5rem 0 .75rem; flex-wrap: wrap; }
+.centro { text-align: center; }
+.input-corto { width: 6rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: .4rem; }
+.acta .tabla input[type=text] { width: 100%; min-width: 12rem; padding: .35rem .5rem;
+  border: 1px solid var(--line); border-radius: .4rem; }
+.com-form { margin: .8rem 0; }
+
+/* Ficha de banda: edición in situ y popup de miembro */
+#datos-banda .edicion-datos { display: none; }
+#datos-banda.editando .edicion-datos { display: flex; }
+#datos-banda.editando .vista-datos { display: none; }
+.stats-fila { display: flex; flex-wrap: wrap; gap: .4rem; }
+.stats-fila legend { width: 100%; }
+.form .stat { flex: 0 0 4.6rem; font-size: .8rem; text-align: center; }
+.form .stat input { padding: .4rem .3rem; text-align: center; width: 100%; }
+.arma-fila { display: flex; gap: .4rem; margin-bottom: .4rem; }
+.arma-fila input { flex: 1; min-width: 0; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: .4rem; }
+.arma-fila input[type=number] { flex: 0 0 6rem; }
+.coste-total { margin: 0; }
+.bloque-plegable { margin-top: 1rem; }
+.bloque-plegable summary { cursor: pointer; font-weight: 700; padding: .3rem 0; }
+.historial { list-style: none; margin: .4rem 0; padding: 0; font-size: .85rem; max-height: 320px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; }
+.historial li { padding: .35rem .6rem; border-bottom: 1px solid var(--line); }
+.historial li:last-child { border-bottom: none; }
