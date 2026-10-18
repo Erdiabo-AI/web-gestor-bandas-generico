@@ -145,6 +145,14 @@ def puede_editar_banda(banda, user):
     return es_comisario(banda["campana_id"], user)
 
 
+def ahora_es():
+    """Fecha y hora de España. Vercel trabaja en UTC: sin esto, el PDF o la copia
+    de seguridad saldrían con dos horas menos (una en invierno)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("Europe/Madrid"))
+
+
 def a_entero(valor, defecto=0):
     try:
         return int(str(valor).strip())

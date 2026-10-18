@@ -1,7 +1,6 @@
 """Administración (rol ADM): reglamentos, notificaciones, usuarios y copia de seguridad."""
 import json
 import secrets
-from datetime import datetime
 
 from flask import (Blueprint, render_template, redirect, url_for, flash,
                    abort, request, Response)
@@ -9,7 +8,7 @@ from psycopg2.extras import Json
 
 from . import db
 from .auth import hash_token
-from .helpers import admin_required, a_entero, definicion_stats
+from .helpers import admin_required, a_entero, definicion_stats, ahora_es
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -202,7 +201,7 @@ def backup_sql():
         orden.extend(listas)
         pendientes -= set(listas)
 
-    ahora = datetime.now()
+    ahora = ahora_es()
     lineas = [
         f"-- Copia de seguridad gestorbandasgenerico · {ahora:%d/%m/%Y %H:%M}",
         "-- Restaurar sobre un esquema VACÍO creado con db/schema.sql:",

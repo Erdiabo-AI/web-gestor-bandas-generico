@@ -1,5 +1,4 @@
 """Generación de PDF con reportlab: ficha de banda (A4 apaisado)."""
-from datetime import datetime
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -9,6 +8,8 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
                                 Paragraph, Spacer)
+
+from .helpers import ahora_es
 
 PADDING = 3                                # margen interior de celda (puntos)
 GRIS_OSCURO = colors.HexColor("#3f3f46")   # cabecera de la web
@@ -92,7 +93,7 @@ def _tabla_miembros(lineas, stats, estados, st):
 def build_banda_pdf(b, plantilla, bajas, stats, historial, estados_banda, estados_miembro, app_name):
     """PDF de la ficha de banda: datos, miembros en plantilla, bajas e historial."""
     buf = BytesIO()
-    generado = datetime.now().strftime("%d/%m/%Y %H:%M")
+    generado = ahora_es().strftime("%d/%m/%Y %H:%M")
 
     def pie(canvas, doc):
         canvas.saveState()
