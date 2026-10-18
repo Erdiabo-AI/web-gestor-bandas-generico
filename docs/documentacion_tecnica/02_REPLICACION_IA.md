@@ -24,7 +24,7 @@ stats tiene un miembro de banda.
 
 ## 2. Stack y restricciones
 
-- Python 3.12, **Flask 3.0.3**, **psycopg2-binary 2.9.9**, python-dotenv 1.0.1. Sin ORM: SQL parametrizado.
+- Python 3.12, **Flask 3.0.3**, **psycopg2-binary 2.9.9**, python-dotenv 1.0.1, **reportlab 5.0.0** (PDF). Sin ORM: SQL parametrizado.
 - PostgreSQL (Neon). UUID como claves (`gen_random_uuid()`), JSONB para datos variables.
 - Plantillas Jinja2 + CSS propio + JavaScript básico (sin frameworks de frontend).
 - Despliegue en Vercel con `@vercel/python` (serverless): **no hay disco persistente** y cada petición abre
@@ -38,7 +38,7 @@ stats tiene un miembro de banda.
 api/index.py         Entrada Vercel (Anexo C: incluye corrección de ruta)
 wsgi.py              Entrada local (puerto 5001)
 vercel.json          (Anexo D)
-requirements.txt     Flask==3.0.3, psycopg2-binary==2.9.9, python-dotenv==1.0.1
+requirements.txt     Flask==3.0.3, psycopg2-binary==2.9.9, python-dotenv==1.0.1, reportlab==5.0.0
 .env.example         SECRET_KEY=, DATABASE_URL=, APP_NAME=
 .gitignore           __pycache__, .venv, .env, .env.* (salvo .env.example), .vercel, *.pdf
 .vercelignore        .venv .env .env.* .claude db docs wsgi.py *.md *.pdf
@@ -47,7 +47,7 @@ app/config.py        SECRET_KEY (o aleatoria), DATABASE_URL, APP_NAME
 app/db.py            (Anexo B)
 app/helpers.py       decoradores, permisos, estados, stats, filtro info, a_entero
 app/servicios.py     anotar_historial, recalcular_valor, historial
-app/auth.py | public.py | dashboard.py | campanas.py | bandas.py | batallas.py | admin.py
+app/auth.py | public.py | dashboard.py | campanas.py | bandas.py | batallas.py | admin.py | pdf.py
 app/templates/       base.html, index, campana, estadisticas, batallas, acta, perfil,
                      gestion_campanas, banda_nueva, banda, legal, auth/{login,register,recuperar,restablecer},
                      admin/{reglamentos,notificaciones}
@@ -169,6 +169,7 @@ Crea las tablas exactamente como en el **Anexo A**. Resumen de relaciones:
 | POST `/campana/<id>/contactar` | campanas.contactar_comisario | público | Regla 15 |
 | GET/POST `/banda/nueva` | bandas.nueva | login | Regla 2 |
 | GET `/banda/<id>` | bandas.ver | público | Ficha (sección 9) |
+| GET `/banda/<id>/pdf` | bandas.pdf | público | PDF A4 apaisado de la ficha (sección 9.3, punto 5) |
 | POST `/banda/<id>/editar` | bandas.editar | propietario/COM | Nombre, tipo, tesorería, estado, observaciones + historial |
 | POST `/banda/<id>/contratar` | bandas.contratar | propietario/COM | Reglas 3-5, 9 |
 | POST `/banda/<id>/miembro/<lid>/editar` | bandas.editar_miembro | propietario/COM | Regla 6 |
@@ -213,6 +214,10 @@ tablas blancas con cabecera gris en mayúsculas pequeñas; contenedor máx. 1100
    aviso «se descontarán N de la tesorería» (nuevo: total; edición: total − total inicial si > 0), experiencia,
    estado (solo editar), notas, observaciones.
 4. Plegable «Bajas (n)» y plegable «Historial (n)».
+5. Botón **📄 Generar PDF** (pestaña nueva): con reportlab, A4 apaisado — título, tabla de datos, observaciones,
+   miembros (una columna por stat, ancho medido con `stringWidth` de la palabra más larga, `_` → espacio),
+   bajas, historial completo y pie con fecha y nº de página. Helvetica no tiene «→»: sustituir por «->».
+   Nombre de archivo ASCII (`unicodedata.normalize('NFKD')`).
 
 ### 9.4 Otras pantallas
 Ver la tabla de rutas. Gestión de campañas en rejilla de dos columnas (Bloque 1 | Bloque 2) y Bloque 3 debajo.
@@ -564,6 +569,7 @@ def app(environ, start_response):
 Flask==3.0.3
 psycopg2-binary==2.9.9
 python-dotenv==1.0.1
+reportlab==5.0.0
 ```
 
 ## Anexo E · Servicios de historial y valor (`app/servicios.py`)

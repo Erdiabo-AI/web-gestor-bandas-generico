@@ -38,6 +38,7 @@ independientes**: repositorio, proyecto de Vercel y base de datos distintos.
 | Frontend | HTML5 + CSS3 propio (sin framework) + JavaScript básico (popups, cálculo en vivo) |
 | Despliegue | Vercel, runtime `@vercel/python`, despliegue automático en cada `git push` a `main` |
 | Contraseñas | `werkzeug.security` (hash PBKDF2), tokens de recuperación con SHA-256 |
+| PDF | reportlab 5.0.0 (ficha de banda en A4 apaisado) |
 
 No hay ORM: las consultas son SQL escrito a mano con parámetros (`%s`), lo que evita inyección SQL.
 
@@ -50,7 +51,7 @@ JaumeP_gestorgenerico/
 ├── api/index.py            Entrada serverless de Vercel (con corrección de ruta, ver §10)
 ├── wsgi.py                 Entrada local: python wsgi.py → http://127.0.0.1:5001
 ├── vercel.json             Todas las rutas → api/index.py
-├── requirements.txt        Flask, psycopg2-binary, python-dotenv
+├── requirements.txt        Flask, psycopg2-binary, python-dotenv, reportlab
 ├── .env.example            Plantilla de variables (SECRET_KEY, DATABASE_URL, APP_NAME)
 ├── .gitignore / .vercelignore
 ├── app/
@@ -66,6 +67,7 @@ JaumeP_gestorgenerico/
 │   ├── bandas.py           Blueprint bandas: alta, ficha, edición, miembros
 │   ├── batallas.py         Blueprint batallas: crear batalla, acta
 │   ├── admin.py            Blueprint admin (/admin): reglamentos, notificaciones, reset, backup
+│   ├── pdf.py              Generación del PDF de la ficha de banda (reportlab)
 │   ├── templates/          Plantillas Jinja2 (base.html + una por pantalla; auth/ y admin/)
 │   └── static/css/style.css
 ├── db/
@@ -124,7 +126,7 @@ Los campos JSONB se escriben siempre con `psycopg2.extras.Json(...)`.
 | `auth` | auth.py | `/login`, `/registro`, `/logout`, `/recuperar`, `/restablecer/<token>` |
 | `dashboard` | dashboard.py | `/perfil`, `POST /perfil/editar` |
 | `campanas` | campanas.py | `/gestion-campanas`, `POST /gestion-campanas/crear`, `POST /gestion-campanas/<id>/estado`, `POST …/<id>/suplente`, `POST …/<id>/comisario`, `POST /gestion-campanas/mensaje/<nid>`, `POST /campana/<id>/contactar` |
-| `bandas` | bandas.py | `/banda/nueva` (GET/POST), `/banda/<id>`, `POST /banda/<id>/editar`, `POST /banda/<id>/contratar`, `POST /banda/<id>/miembro/<lid>/editar`, `POST /banda/<id>/miembro/<lid>/despedir` |
+| `bandas` | bandas.py | `/banda/nueva` (GET/POST), `/banda/<id>`, `/banda/<id>/pdf`, `POST /banda/<id>/editar`, `POST /banda/<id>/contratar`, `POST /banda/<id>/miembro/<lid>/editar`, `POST /banda/<id>/miembro/<lid>/despedir` |
 | `batallas` | batallas.py | `POST /campana/<id>/batallas/crear`, `/batalla/<id>/acta` (GET/POST) |
 | `admin` | admin.py | `/admin/reglamentos`, `POST /admin/reglamentos/guardar`, `POST /admin/reglamentos/<id>/borrar`, `/admin/notificaciones` (+ leída, borrar, todas leídas), `POST /admin/usuarios/<id>/reset`, `/admin/backup.sql` |
 

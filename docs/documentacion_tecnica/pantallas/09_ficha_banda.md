@@ -4,7 +4,7 @@
 |---|---|
 | **Ruta** | `GET /banda/<uuid:banda_id>` + acciones POST |
 | **Acceso** | Lectura pública. Edición: propietario o comisario de la campaña (ADM siempre) |
-| **Vista** | `app/bandas.py` (`ver`, `editar`, `contratar`, `editar_miembro`, `despedir`) |
+| **Vista** | `app/bandas.py` (`ver`, `pdf`, `editar`, `contratar`, `editar_miembro`, `despedir`) |
 | **Plantilla** | `app/templates/banda.html` |
 | **Mockup** | `docs/material_base/03_banda_gestor_generico.png` |
 
@@ -71,6 +71,28 @@ Miembros Despedidos o Muertos, con la misma tabla. Se pueden editar (p. ej. corr
 ## 5. Historial (plegable)
 Líneas de `banda_audit`, la más reciente primero: `dd/mm/aaaa hh:mm · Usuario · acción`.
 Abierto por defecto si tiene 5 líneas o menos.
+
+## 6. Botón «📄 Generar PDF»
+Junto a «Volver a campaña». Abre en una pestaña nueva `GET /banda/<id>/pdf` (`bandas.pdf`), con el mismo
+acceso que la ficha (público). Usa la misma carga de datos que la pantalla (`_ficha`), así que el PDF muestra
+exactamente lo mismo. Generado con reportlab en `app/pdf.py` (`build_banda_pdf`), **A4 apaisado**:
+
+- Título (nombre de la banda) y subtítulo: tipo · campaña · reglamento.
+- Tabla de datos: Usuario, Banda, Campaña, Reglamento, Tesorería, Coste, Estado (cabecera beige).
+- Observaciones.
+- «Miembros de la banda (n)»: Nº, Nombre, Tipo, Cant., **una columna por stat**, Armamento, Exp., Coste
+  (`xN = total`), Estado, Notas (+ observaciones). Cabecera gris oscura, filas alternas.
+- «Bajas: despedidos y muertos (n)» con la misma tabla, si hay.
+- «Historial (n)» completo, el más reciente primero.
+- Pie en cada página: título del gestor · banda · fecha de generación y «Página N».
+
+Detalles técnicos:
+- Las columnas de stats se dimensionan **midiendo el ancho real** de su palabra más larga
+  (`stringWidth`, Helvetica-Bold); `impactos_totales` se muestra «IMPACTOS TOTALES» para partir por palabras.
+  Si no caben, se reducen proporcionalmente reservando al menos 55 mm para Armamento + Notas.
+- La fuente Helvetica no tiene «→»: en el PDF se sustituye por «->». El texto del usuario se escapa.
+- Nombre del archivo sin acentos ni símbolos: «Lobos «azules» & Cía» → `banda_Lobos_azules_Cia.pdf`
+  (se muestra en el navegador; se puede guardar o imprimir).
 
 ## Mensajes
 ««X» contratado por N.», ««X» actualizado.», ««X» despedido.», «Datos de la banda guardados.»,

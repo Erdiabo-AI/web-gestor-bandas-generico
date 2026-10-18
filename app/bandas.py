@@ -124,8 +124,8 @@ def nueva():
 # ---------------------------------------------------------------------------
 #  Ficha
 # ---------------------------------------------------------------------------
-@bp.route("/banda/<uuid:banda_id>")
-def ver(banda_id):
+def _ficha(banda_id):
+    """Datos comunes de la ficha (pantalla y PDF): banda, miembros, stats y bajas."""
     b = _banda(banda_id)
     lineas = db.query(
         "SELECT * FROM bandas_lin WHERE banda_id = %s ORDER BY banda_lin_orden, banda_lin_nombre",
@@ -134,6 +134,30 @@ def ver(banda_id):
     stats = columnas_stats(defs, lineas)
     plantilla = [ln for ln in lineas if ln["banda_lin_estado"] in MIEMBRO_EN_PLANTILLA]
     bajas = [ln for ln in lineas if ln["banda_lin_estado"] not in MIEMBRO_EN_PLANTILLA]
+    return b, lineas, defs, stats, plantilla, bajas
+
+
+@bp.route("/banda/<uuid:banda_id>/pdf")
+def pdf(banda_id):
+    """Ficha de banda en PDF (mismo acceso que la ficha: público)."""
+    import re
+    import unicodedata
+    from flask import current_app, send_file
+    from io import BytesIO
+    from .pdf import build_banda_pdf
+    b, _lineas, _defs, stats, plantilla, bajas = _ficha(banda_id)
+    contenido = build_banda_pdf(b, plantilla, bajas, stats, historial(b["banda_audit"]),
+                                ESTADOS_BANDA, ESTADOS_MIEMBRO, current_app.config["APP_NAME"])
+    # Nombre de archivo sin acentos ni símbolos: «Lobos «azules» & Cía» → banda_Lobos_azules_Cia.pdf
+    sin_tildes = unicodedata.normalize("NFKD", b["banda_nombre"]).encode("ascii", "ignore").decode()
+    nombre = re.sub(r"[^A-Za-z0-9_-]+", "_", sin_tildes).strip("_") or "banda"
+    return send_file(BytesIO(contenido), mimetype="application/pdf", as_attachment=False,
+                     download_name=f"banda_{nombre}.pdf")
+
+
+@bp.route("/banda/<uuid:banda_id>")
+def ver(banda_id):
+    b, lineas, defs, stats, plantilla, bajas = _ficha(banda_id)
     # Datos para el popup de edición (se serializan con |tojson en la plantilla)
     miembros = {str(ln["banda_lin_id"]): {
         "orden": ln["banda_lin_orden"], "nombre": ln["banda_lin_nombre"],
