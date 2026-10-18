@@ -1,8 +1,9 @@
 """Autenticación: login, registro, logout y recuperación de contraseña."""
 import hashlib
 
+import psycopg2
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   session, flash)
+                   session, flash, current_app)
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from . import db
@@ -70,8 +71,15 @@ def register():
                 (nombre, email, generate_password_hash(password)),
                 returning=True,
             )
+        except psycopg2.IntegrityError:
+            db.get_db().rollback()
+            flash("Ese email ya está registrado. Inicia sesión o recupera la contraseña.", "danger")
+            return render_template("auth/register.html")
         except Exception:
-            flash("No se pudo registrar (¿email ya en uso?).", "danger")
+            # Sin DATABASE_URL o sin conexión: se registra en los logs (Vercel → Logs)
+            current_app.logger.exception("Registro: error de base de datos")
+            flash("No se pudo registrar por un problema con la base de datos. "
+                  "Avisa al administrador.", "danger")
             return render_template("auth/register.html")
 
         if row:

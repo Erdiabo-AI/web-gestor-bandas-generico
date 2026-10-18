@@ -116,6 +116,26 @@ def estadisticas(campana_id):
     return render_template("estadisticas.html", c=c, filas=filas, estados_banda=ESTADOS_BANDA)
 
 
+@bp.route("/salud")
+def salud():
+    """Diagnóstico del despliegue: ¿hay BBDD configurada y responde?
+    No muestra la cadena de conexión ni ningún otro secreto."""
+    from flask import current_app, jsonify
+    if not current_app.config.get("DATABASE_URL"):
+        return jsonify(estado="sin_bd", detalle="Falta la variable DATABASE_URL"), 503
+    try:
+        conn = db.get_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM information_schema.tables "
+                        "WHERE table_schema = 'public' AND table_name = 'usuarios'")
+            tiene_tablas = cur.fetchone()[0] == 1
+    except Exception as e:
+        return jsonify(estado="error_bd", detalle=type(e).__name__), 503
+    if not tiene_tablas:
+        return jsonify(estado="sin_tablas", detalle="La BBDD no tiene el esquema"), 503
+    return jsonify(estado="ok")
+
+
 @bp.route("/aviso-legal")
 def aviso_legal():
     return render_template("legal.html", pagina="aviso", titulo="Aviso legal")
