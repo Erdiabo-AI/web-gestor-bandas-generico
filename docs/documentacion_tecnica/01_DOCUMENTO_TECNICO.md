@@ -39,6 +39,8 @@ independientes**: repositorio, proyecto de Vercel y base de datos distintos.
 | Despliegue | Vercel, runtime `@vercel/python`, despliegue automático en cada `git push` a `main` |
 | Contraseñas | `werkzeug.security` (hash PBKDF2), tokens de recuperación con SHA-256 |
 | PDF | reportlab 5.0.0 (ficha de banda en A4 apaisado) |
+| Excel | openpyxl 3.1.5 (ficha de banda en .xlsx) |
+| Zona horaria | tzdata (hora de España en PDF, Excel y copia de seguridad) |
 
 No hay ORM: las consultas son SQL escrito a mano con parámetros (`%s`), lo que evita inyección SQL.
 
@@ -51,7 +53,7 @@ JaumeP_gestorgenerico/
 ├── api/index.py            Entrada serverless de Vercel (con corrección de ruta, ver §10)
 ├── wsgi.py                 Entrada local: python wsgi.py → http://127.0.0.1:5001
 ├── vercel.json             Todas las rutas → api/index.py
-├── requirements.txt        Flask, psycopg2-binary, python-dotenv, reportlab
+├── requirements.txt        Flask, psycopg2-binary, python-dotenv, reportlab, tzdata, openpyxl
 ├── .env.example            Plantilla de variables (SECRET_KEY, DATABASE_URL, APP_NAME)
 ├── .gitignore / .vercelignore
 ├── app/
@@ -68,6 +70,7 @@ JaumeP_gestorgenerico/
 │   ├── batallas.py         Blueprint batallas: crear batalla, acta
 │   ├── admin.py            Blueprint admin (/admin): reglamentos, notificaciones, reset, backup
 │   ├── pdf.py              Generación del PDF de la ficha de banda (reportlab)
+│   ├── excel.py            Generación del Excel de la ficha de banda (openpyxl)
 │   ├── templates/          Plantillas Jinja2 (base.html + una por pantalla; auth/ y admin/)
 │   └── static/css/style.css
 ├── db/
@@ -126,7 +129,7 @@ Los campos JSONB se escriben siempre con `psycopg2.extras.Json(...)`.
 | `auth` | auth.py | `/login`, `/registro`, `/logout`, `/recuperar`, `/restablecer/<token>` |
 | `dashboard` | dashboard.py | `/perfil`, `POST /perfil/editar` |
 | `campanas` | campanas.py | `/gestion-campanas`, `POST /gestion-campanas/crear`, `POST /gestion-campanas/<id>/estado`, `POST …/<id>/suplente`, `POST …/<id>/comisario`, `POST /gestion-campanas/mensaje/<nid>`, `POST /campana/<id>/contactar` |
-| `bandas` | bandas.py | `/banda/nueva` (GET/POST), `/banda/<id>`, `/banda/<id>/pdf`, `POST /banda/<id>/editar`, `POST /banda/<id>/contratar`, `POST /banda/<id>/miembro/<lid>/editar`, `POST /banda/<id>/miembro/<lid>/despedir` |
+| `bandas` | bandas.py | `/banda/nueva` (GET/POST), `/banda/<id>`, `/banda/<id>/pdf`, `/banda/<id>/excel`, `POST /banda/<id>/editar`, `POST /banda/<id>/contratar`, `POST /banda/<id>/miembro/<lid>/editar`, `POST /banda/<id>/miembro/<lid>/eliminar` |
 | `batallas` | batallas.py | `POST /campana/<id>/batallas/crear`, `/batalla/<id>/acta` (GET/POST) |
 | `admin` | admin.py | `/admin/reglamentos`, `POST /admin/reglamentos/guardar`, `POST /admin/reglamentos/<id>/borrar`, `/admin/notificaciones` (+ leída, borrar, todas leídas), `POST /admin/usuarios/<id>/reset`, `/admin/backup.sql` |
 
@@ -252,22 +255,35 @@ El modo comisario se guarda en `session["com"]` (lista de ids de campaña) y se 
 ### 8.3 Miembros y tesorería
 - **Coste unitario del miembro** = precio base + Σ precios del armamento. El precio base no se guarda:
   se deduce como `coste − Σ armamento` al editar.
-- **Contratar** descuenta `coste × cantidad` de la tesorería.
-- **Editar** cobra solo lo que **sube** el coste de la línea (`coste × cantidad` nuevo − anterior), es decir,
-  equipo comprado o más unidades. Retirar equipo **no reembolsa** automáticamente.
-- **Despedir** pone el estado `2` (Despedido); el miembro pasa a la lista de bajas y deja de contar en el valor.
+- **Contratar** descuenta `coste × cantidad` de la tesorería. **Duplicar** abre «Contratar» con los datos de
+  otro miembro (nombre «… (copia)», sin notas): se cobra como cualquier contratación.
+- **Editar**: si el miembro está en plantilla (Activo o Lesionado) antes y después, la tesorería sigue al coste
+  de la línea (`coste × cantidad` nuevo − anterior): **si sube se cobra, si baja se devuelve** («devolución N»).
+  Así siempre se cumple tesorería + coste = lo gastado. Los **cambios de estado no mueven dinero**.
+- **Estado**: se gestiona solo desde el popup de edición (ya no hay botón «Despedir»). Despedido y Muerto pasan a
+  la lista de bajas y dejan de contar en el valor.
+- **Muerto**: al pasar a Muerto, las notas se sustituyen por `Muerto: dd/mm/aa` (fecha de España); las notas
+  anteriores quedan en el historial. Si ya estaba Muerto, las notas se pueden editar libremente.
+- **Eliminar** (botón del popup de edición, con confirmación): borra la línea **sin devolver** su coste; queda en
+  el historial y se recalcula el valor. Sirve para corregir errores (p. ej. miembros duplicados).
 - La **tesorería es siempre editable** a mano desde la ficha. Si queda negativa se avisa, pero se permite.
-- **Categoría** del miembro (`banda_lin_categoria`): texto libre opcional (máx. 50) con sugerencias «Héroe», «Secuaz» y las ya usadas en la banda. Sus cambios quedan en el historial.
+- **Categoría** del miembro (`banda_lin_categoria`): texto libre opcional (máx. 50) con sugerencias «Héroe»,
+  «Secuaz» y las ya usadas en la banda. Sus cambios quedan en el historial.
+- **Historial**: toda acción (crear banda, contratar, editar, comprar, devolver, eliminar, cambios de datos y de
+  tesorería) añade una línea a `bandas.banda_audit` con el formato `dd/mm/aaaa hh:mm · Usuario · texto` (hora de
+  España calculada en PostgreSQL con `AT TIME ZONE 'Europe/Madrid'`). Se ve en la ficha; no sale en PDF ni Excel.
 
 ### 8.3.1 Doble clic y operaciones simultáneas
-- **Navegador** (`base.html`): cada formulario POST se envía una sola vez; los botones se desactivan justo después de enviar (con `setTimeout`, para no perder el valor del botón pulsado, p. ej. `accion=confirmar`). Al volver atrás con el navegador se reactivan (`pageshow`).
-- **Servidor**: toda operación que modifica una banda la bloquea con `SELECT … FOR UPDATE` (`bandas._banda_editable`) hasta confirmar. Una segunda petición simultánea espera y lee los datos ya actualizados, así que no vuelve a cobrar.
-- **Cobros atómicos**: `UPDATE bandas SET banda_tesoreria = banda_tesoreria − importe … RETURNING`; el historial calcula «antes → después» a partir del valor real devuelto.
-- **Despedir** es idempotente: si el miembro ya estaba despedido no se repite ni se anota.
+- **Navegador** (`base.html`): cada formulario POST se envía una sola vez; los botones se desactivan justo
+  después de enviar (con `setTimeout`, para no perder el valor del botón pulsado, p. ej. `accion=confirmar`).
+  Al volver atrás con el navegador se reactivan (`pageshow`).
+- **Servidor**: toda operación que modifica una banda la bloquea con `SELECT … FOR UPDATE`
+  (`bandas._banda_editable`) hasta confirmar. Una segunda petición simultánea espera y lee los datos ya
+  actualizados, así que no vuelve a cobrar.
+- **Cobros y devoluciones atómicos**: `UPDATE bandas SET banda_tesoreria = banda_tesoreria − importe … RETURNING`
+  (importe negativo = devolución); el historial calcula «antes → después» con el valor real devuelto.
+- **Eliminar** es idempotente: si el miembro ya no existe (doble clic), no hace nada.
 - Probado con peticiones en paralelo: doble compra → un solo cargo; cinco contrataciones a la vez → tesorería exacta.
-- **Historial**: toda acción (crear banda, contratar, editar, comprar, despedir, cambios de datos y de tesorería)
-  añade una línea a `bandas.banda_audit` con el formato `dd/mm/aaaa hh:mm · Usuario · texto` (hora de
-  España calculada en PostgreSQL con `AT TIME ZONE 'Europe/Madrid'`).
 
 ### 8.4 Batallas y actas
 - Las actas son **informativas**: no modifican tesorería, miembros ni valor de las bandas.

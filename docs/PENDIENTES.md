@@ -27,8 +27,10 @@ Decisiones tomadas el 18/10/2026. ✅ = implementado y probado · ❓ = pendient
   «Acceder como comisario» y, mientras dura la sesión, gestionan bandas y actas de todos.
   Sin activarlo, el gestor solo edita su propia banda.
 - **Suplente**: lo nombra el creador entre los inscritos (Gestión de campañas · Bloque 2).
-- **Cobro al editar un miembro**: se cobra lo que sube el coste de la línea (equipo nuevo o
-  más unidades). Retirar equipo **no reembolsa** solo; se corrige editando la tesorería.
+- **Dinero al editar un miembro** (decidido el 18/10): si sube el coste de la línea se cobra y si baja
+  se **devuelve**. Cambiar de estado no mueve dinero. **Eliminar** un miembro no devuelve nada.
+- **Muerto**: las notas se sustituyen por «Muerto: dd/mm/aa» (las anteriores quedan en el historial).
+- **PDF y Excel** de la banda: sin historial.
 - **Quién crea batallas**: cualquier participante con banda activa (se vincula la suya) o el comisario.
   Un jugador no puede quitar su propia banda del acta. Tras confirmar, solo el comisario reabre.
 - **Estado de banda**: 1 Activa · 2 Destruida.

@@ -23,12 +23,8 @@
     {% if acciones %}
       <td class="acciones">
         <button class="btn btn-small" type="button" onclick="editarMiembro('{{ ln.banda_lin_id }}')">Editar</button>
-        {% if ln.banda_lin_estado in (0, 1) %}
-          <form method="post" action="{{ url_for('bandas.despedir', banda_id=b.banda_id, lin_id=ln.banda_lin_id) }}"
-                onsubmit="return confirm('¿Despedir a este miembro? Pasará a la lista de bajas.');">
-            <button class="btn btn-small btn-danger" type="submit">Despedir</button>
-          </form>
-        {% endif %}
+        <button class="btn btn-small" type="button" onclick="duplicarMiembro('{{ ln.banda_lin_id }}')"
+                title="Abre «Contratar» con los datos de este miembro">Duplicar</button>
       </td>
     {% endif %}
   </tr>
@@ -49,7 +45,9 @@
     {% if b.banda_estado != 1 %}<span class="badge">{{ estados_banda.get(b.banda_estado) }}</span>{% endif %}</h1>
   <div>
     <a class="btn" href="{{ url_for('bandas.pdf', banda_id=b.banda_id) }}" target="_blank" rel="noopener"
-       title="Ficha completa de la banda en PDF: datos, miembros, bajas e historial">📄 Generar PDF</a>
+       title="Ficha de la banda en PDF: datos, miembros y bajas">📄 Generar PDF</a>
+    <a class="btn" href="{{ url_for('bandas.excel', banda_id=b.banda_id) }}"
+       title="Ficha de la banda en Excel: datos, miembros y bajas">📊 Exportar Excel</a>
     <a class="btn" href="{{ url_for('public.campana', campana_id=b.campana_id) }}">← Volver a campaña</a>
   </div>
 </div>
@@ -187,7 +185,12 @@
       </div>
       <label>Notas <input type="text" name="notas" id="m-notas"></label>
       <label>Observaciones <textarea name="observaciones" id="m-observaciones" rows="2"></textarea></label>
-      <button class="btn btn-primary" type="submit" id="m-boton">Contratar</button>
+      <div class="form-actions acciones-popup">
+        <button class="btn btn-primary" type="submit" id="m-boton">Contratar</button>
+        <button class="btn btn-danger" type="submit" id="m-eliminar" formnovalidate
+                onclick="return confirm('¿Eliminar este miembro de la banda? No se puede deshacer y su coste NO se devuelve a la tesorería.');">
+          Eliminar miembro</button>
+      </div>
     </form>
   </div>
 </div>
@@ -201,8 +204,10 @@
   var MIEMBROS = JSON.parse(document.getElementById('miembros-datos').textContent);
   var URL_CONTRATAR = {{ url_for('bandas.contratar', banda_id=b.banda_id)|tojson }};
   var URL_EDITAR = {{ url_for('bandas.editar_miembro', banda_id=b.banda_id, lin_id='00000000-0000-0000-0000-000000000000')|tojson }};
+  var URL_ELIMINAR = {{ url_for('bandas.eliminar_miembro', banda_id=b.banda_id, lin_id='00000000-0000-0000-0000-000000000000')|tojson }};
+  var SIN_ID = '00000000-0000-0000-0000-000000000000';
   var SIGUIENTE_ORDEN = {{ siguiente_orden }};
-  var costeInicial = 0;
+  var costeInicial = 0, estadoInicial = 0;
 
   function $(id) { return document.getElementById(id); }
 
@@ -219,6 +224,8 @@
     recalcular();
   }
 
+  // Aviso en vivo del dinero que se moverá: igual que el servidor (cobro al subir,
+  // devolución al bajar, solo si el miembro sigue en plantilla: Activo o Lesionado).
   function recalcular() {
     var coste = parseInt($('m-precio').value || '0', 10) || 0;
     document.querySelectorAll('#m-armamento input[name=arm_precio]').forEach(function (i) {
@@ -227,41 +234,55 @@
     var cant = parseInt($('m-cantidad').value || '1', 10) || 1;
     $('m-coste').textContent = coste;
     $('m-coste-total').textContent = cant > 1 ? ('× ' + cant + ' = ' + (coste * cant)) : '';
-    var esNuevo = !$('m-form').dataset.editando;
-    var cobro = esNuevo ? coste * cant : coste * cant - costeInicial;
-    $('m-aviso-cobro').textContent = cobro > 0 ? ('· se descontarán ' + cobro + ' de la tesorería') : '';
+    var aviso = '';
+    if (!$('m-form').dataset.editando) {
+      aviso = '· se descontarán ' + (coste * cant) + ' de la tesorería';
+    } else {
+      var enPlantilla = estadoInicial <= 1 && parseInt($('m-estado').value, 10) <= 1;
+      var dif = coste * cant - costeInicial;
+      if (enPlantilla && dif > 0) aviso = '· se descontarán ' + dif + ' de la tesorería';
+      if (enPlantilla && dif < 0) aviso = '· se devolverán ' + (-dif) + ' a la tesorería';
+    }
+    $('m-aviso-cobro').textContent = aviso;
   }
 
-  function editarMiembro(id) {
+  // modo: 'nuevo' (contratar), 'editar' o 'duplicar' (contratar con los datos de otro)
+  function abrirMiembro(id, modo) {
     var m = id ? MIEMBROS[id] : null;
+    var editar = modo === 'editar', duplicar = modo === 'duplicar';
     var form = $('m-form');
-    form.action = id ? URL_EDITAR.replace('00000000-0000-0000-0000-000000000000', id) : URL_CONTRATAR;
-    form.dataset.editando = id ? '1' : '';
-    $('m-titulo').textContent = id ? 'Editar miembro' : 'Contratar miembro';
-    $('m-boton').textContent = id ? 'Guardar cambios' : 'Contratar';
-    $('m-estado-wrap').style.display = id ? '' : 'none';
-    $('m-orden').value = m ? m.orden : SIGUIENTE_ORDEN;
-    $('m-nombre').value = m ? m.nombre : '';
+    form.action = editar ? URL_EDITAR.replace(SIN_ID, id) : URL_CONTRATAR;
+    form.dataset.editando = editar ? '1' : '';
+    $('m-titulo').textContent = editar ? 'Editar miembro' : (duplicar ? 'Duplicar miembro' : 'Contratar miembro');
+    $('m-boton').textContent = editar ? 'Guardar cambios' : (duplicar ? 'Contratar copia' : 'Contratar');
+    $('m-estado-wrap').style.display = editar ? '' : 'none';
+    $('m-eliminar').style.display = editar ? '' : 'none';
+    $('m-eliminar').setAttribute('formaction', editar ? URL_ELIMINAR.replace(SIN_ID, id) : '');
+    $('m-orden').value = editar ? m.orden : SIGUIENTE_ORDEN;
+    $('m-nombre').value = editar ? m.nombre : (duplicar ? m.nombre + ' (copia)' : '');
     $('m-subtipo').value = m ? m.subtipo : '';
     $('m-categoria').value = m ? m.categoria : '';
     $('m-cantidad').value = m ? m.cantidad : 1;
     $('m-precio').value = m ? m.precio : 0;
     $('m-experiencia').value = m ? m.experiencia : 0;
-    $('m-estado').value = m ? m.estado : 0;
-    $('m-notas').value = m ? m.notas : '';
-    $('m-observaciones').value = m ? m.observaciones : '';
+    $('m-estado').value = editar ? m.estado : 0;
+    $('m-notas').value = editar ? m.notas : '';                  // las notas son de cada miembro: no se copian
+    $('m-observaciones').value = editar ? m.observaciones : '';
     document.querySelectorAll('[data-stat]').forEach(function (i) {
       var v = m && m.stats && (i.dataset.stat in m.stats) ? m.stats[i.dataset.stat] : i.dataset.defecto;
       i.value = (v === null || v === undefined) ? '' : v;
     });
     $('m-armamento').innerHTML = '';
     (m ? m.armamento : []).forEach(function (a) { filaArma(a.nombre || '', a.precio || 0); });
-    costeInicial = m ? (m.precio + m.armamento.reduce(function (s, a) { return s + (parseInt(a.precio, 10) || 0); }, 0)) * m.cantidad : 0;
+    costeInicial = editar ? (m.precio + m.armamento.reduce(function (s, a) { return s + (parseInt(a.precio, 10) || 0); }, 0)) * m.cantidad : 0;
+    estadoInicial = editar ? m.estado : 0;
     recalcular();
     abrirModal('modal-miembro');
   }
+  function editarMiembro(id) { abrirMiembro(id, id ? 'editar' : 'nuevo'); }
+  function duplicarMiembro(id) { abrirMiembro(id, 'duplicar'); }
 
-  ['m-precio', 'm-cantidad'].forEach(function (id) { $(id).addEventListener('input', recalcular); });
+  ['m-precio', 'm-cantidad', 'm-estado'].forEach(function (id) { $(id).addEventListener('input', recalcular); });
   $('m-armamento').addEventListener('input', recalcular);
 </script>
 {% endif %}

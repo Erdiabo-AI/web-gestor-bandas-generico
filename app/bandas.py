@@ -3,9 +3,12 @@
 Reglas de negocio (docs/PENDIENTES.md):
   - Una banda ACTIVA por usuario y campaña; si queda Destruida puede crear otra.
   - Solo en campañas en INSCRIPCION o ABIERTA.
-  - Contratar o comprar equipo descuenta de la tesorería; la tesorería sigue
-    siendo editable a mano. Toda acción queda en el historial (banda_audit).
+  - Contratar o comprar equipo descuenta de la tesorería y bajar el coste lo
+    devuelve; la tesorería sigue siendo editable a mano. Eliminar un miembro no
+    devuelve nada. Toda acción queda en el historial (banda_audit).
   - Coste del miembro = precio base + Σ precios del armamento (por unidad).
+  - El estado se gestiona desde el popup de edición; al pasar a Muerto las notas
+    se sustituyen por «Muerto: dd/mm/aa».
 """
 from datetime import date
 
@@ -16,7 +19,7 @@ from psycopg2.extras import Json
 
 from . import db
 from .helpers import (login_required, puede_editar_banda, columnas_stats, definicion_stats, a_entero,
-                      ESTADOS_BANDA, ESTADOS_MIEMBRO, MIEMBRO_EN_PLANTILLA)
+                      ahora_es, ESTADOS_BANDA, ESTADOS_MIEMBRO, MIEMBRO_EN_PLANTILLA)
 from .servicios import anotar_historial, recalcular_valor, historial
 
 bp = Blueprint("bandas", __name__)
@@ -145,22 +148,39 @@ def _ficha(banda_id):
     return b, lineas, defs, stats, plantilla, bajas
 
 
-@bp.route("/banda/<uuid:banda_id>/pdf")
-def pdf(banda_id):
-    """Ficha de banda en PDF (mismo acceso que la ficha: público)."""
+def _nombre_archivo(b, extension):
+    """Sin acentos ni símbolos: «Lobos «azules» & Cía» → banda_Lobos_azules_Cia.pdf"""
     import re
     import unicodedata
+    sin_tildes = unicodedata.normalize("NFKD", b["banda_nombre"]).encode("ascii", "ignore").decode()
+    return "banda_" + (re.sub(r"[^A-Za-z0-9_-]+", "_", sin_tildes).strip("_") or "banda") + extension
+
+
+@bp.route("/banda/<uuid:banda_id>/pdf")
+def pdf(banda_id):
+    """Ficha de banda en PDF, sin historial (mismo acceso que la ficha: público)."""
     from flask import current_app, send_file
     from io import BytesIO
     from .pdf import build_banda_pdf
     b, _lineas, _defs, stats, plantilla, bajas = _ficha(banda_id)
-    contenido = build_banda_pdf(b, plantilla, bajas, stats, historial(b["banda_audit"]),
-                                ESTADOS_BANDA, ESTADOS_MIEMBRO, current_app.config["APP_NAME"])
-    # Nombre de archivo sin acentos ni símbolos: «Lobos «azules» & Cía» → banda_Lobos_azules_Cia.pdf
-    sin_tildes = unicodedata.normalize("NFKD", b["banda_nombre"]).encode("ascii", "ignore").decode()
-    nombre = re.sub(r"[^A-Za-z0-9_-]+", "_", sin_tildes).strip("_") or "banda"
+    contenido = build_banda_pdf(b, plantilla, bajas, stats, ESTADOS_BANDA, ESTADOS_MIEMBRO,
+                                current_app.config["APP_NAME"])
     return send_file(BytesIO(contenido), mimetype="application/pdf", as_attachment=False,
-                     download_name=f"banda_{nombre}.pdf")
+                     download_name=_nombre_archivo(b, ".pdf"))
+
+
+@bp.route("/banda/<uuid:banda_id>/excel")
+def excel(banda_id):
+    """Ficha de banda en Excel (.xlsx), mismo contenido que el PDF."""
+    from flask import current_app, send_file
+    from io import BytesIO
+    from .excel import build_banda_xlsx
+    b, _lineas, _defs, stats, plantilla, bajas = _ficha(banda_id)
+    contenido = build_banda_xlsx(b, plantilla, bajas, stats, ESTADOS_BANDA, ESTADOS_MIEMBRO,
+                                 current_app.config["APP_NAME"])
+    return send_file(
+        BytesIO(contenido), as_attachment=True, download_name=_nombre_archivo(b, ".xlsx"),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @bp.route("/banda/<uuid:banda_id>")
@@ -379,8 +399,16 @@ def editar_miembro(banda_id, lin_id):
         cambios.append("compra " + ", ".join(nuevos))
     if quitados:
         cambios.append("retira " + ", ".join(quitados))
-    if (ln["banda_lin_notas"] or None) != m["notas"] or \
-            (ln["banda_lin_observaciones"] or None) != m["observaciones"]:
+    # Al pasar a Muerto, las notas se sustituyen por la fecha («Muerto: 18/10/26»);
+    # las notas anteriores quedan guardadas en el historial para no perderlas.
+    muere = m["estado"] == 3 and (ln["banda_lin_estado"] or 0) != 3
+    if muere:
+        anteriores = m["notas"] or ln["banda_lin_notas"]
+        m["notas"] = f"Muerto: {ahora_es():%d/%m/%y}"
+        cambios.append(f"notas → «{m['notas']}»"
+                       + (f" (notas anteriores: «{anteriores}»)" if anteriores else ""))
+    if (ln["banda_lin_observaciones"] or None) != m["observaciones"] or \
+            (not muere and (ln["banda_lin_notas"] or None) != m["notas"]):
         cambios.append("notas")
 
     db.execute(
@@ -393,12 +421,17 @@ def editar_miembro(banda_id, lin_id):
          m["experiencia"], m["estado"], Json(m["stats"]), Json(m["armamento"]), m["notas"], m["observaciones"],
          str(lin_id)), commit=False)
 
-    # Cobro: lo que sube el coste de la línea (equipo nuevo o más unidades).
-    # Las bajadas no se reembolsan solas: la tesorería se corrige a mano.
-    incremento = m["coste"] * m["cantidad"] - ln["banda_lin_coste"] * ln["banda_lin_cantidad"]
+    # Dinero: si el miembro está en plantilla antes y después, la tesorería sigue al
+    # coste de la línea (coste × cantidad): si sube se cobra, si baja se devuelve.
+    # Los cambios de estado (pasar a Despedido/Muerto o volver a Activo) no mueven dinero.
+    diferencia = m["coste"] * m["cantidad"] - ln["banda_lin_coste"] * ln["banda_lin_cantidad"]
+    en_plantilla = ((ln["banda_lin_estado"] or 0) in MIEMBRO_EN_PLANTILLA
+                    and m["estado"] in MIEMBRO_EN_PLANTILLA)
     texto = f"Edita «{m['nombre']}»: " + ("; ".join(cambios) if cambios else "sin cambios")
-    if incremento > 0 and m["estado"] in MIEMBRO_EN_PLANTILLA:
-        _cobrar(b, incremento, f"{texto} · cargo {incremento}")
+    if en_plantilla and diferencia > 0:
+        _cobrar(b, diferencia, f"{texto} · cargo {diferencia}")
+    elif en_plantilla and diferencia < 0:
+        _cobrar(b, diferencia, f"{texto} · devolución {-diferencia}")   # importe negativo = devolver
     else:
         anotar_historial(banda_id, texto, commit=False)
     recalcular_valor(banda_id)
@@ -406,18 +439,22 @@ def editar_miembro(banda_id, lin_id):
     return redirect(url_for("bandas.ver", banda_id=banda_id))
 
 
-@bp.route("/banda/<uuid:banda_id>/miembro/<uuid:lin_id>/despedir", methods=["POST"])
+@bp.route("/banda/<uuid:banda_id>/miembro/<uuid:lin_id>/eliminar", methods=["POST"])
 @login_required
-def despedir(banda_id, lin_id):
+def eliminar_miembro(banda_id, lin_id):
+    """Borra el miembro. No devuelve su coste (la tesorería se ajusta a mano si hace falta)."""
     _banda_editable(banda_id)
-    ln = _linea(banda_id, lin_id)
-    if ln["banda_lin_estado"] == 2:   # doble clic: ya estaba despedido, no se repite
-        flash(f"«{ln['banda_lin_nombre']}» ya estaba despedido.", "info")
+    ln = db.query("SELECT * FROM bandas_lin WHERE banda_lin_id = %s AND banda_id = %s",
+                  (str(lin_id), str(banda_id)), one=True)
+    if not ln:   # doble clic: ya se eliminó en la primera petición
+        flash("Ese miembro ya no existe.", "info")
         return redirect(url_for("bandas.ver", banda_id=banda_id))
-    db.execute("UPDATE bandas_lin SET banda_lin_estado = 2 WHERE banda_lin_id = %s",
-               (str(lin_id),), commit=False)
-    anotar_historial(banda_id, f"Despide a «{ln['banda_lin_nombre']}» ({ln['banda_lin_subtipo']})",
-                     commit=False)
+    db.execute("DELETE FROM bandas_lin WHERE banda_lin_id = %s", (str(lin_id),), commit=False)
+    anotar_historial(
+        banda_id,
+        f"Elimina «{ln['banda_lin_nombre']}» ({ln['banda_lin_subtipo']}) ×{ln['banda_lin_cantidad']}, "
+        f"estado {ESTADOS_MIEMBRO.get(ln['banda_lin_estado'] or 0)}, coste "
+        f"{ln['banda_lin_coste'] * ln['banda_lin_cantidad']} · sin devolución", commit=False)
     recalcular_valor(banda_id)
-    flash(f"«{ln['banda_lin_nombre']}» despedido.", "info")
+    flash(f"«{ln['banda_lin_nombre']}» eliminado de la banda.", "info")
     return redirect(url_for("bandas.ver", banda_id=banda_id))

@@ -3,3 +3,4 @@ psycopg2-binary==2.9.9
 python-dotenv==1.0.1
 reportlab==5.0.0
 tzdata==2025.2
+openpyxl==3.1.5

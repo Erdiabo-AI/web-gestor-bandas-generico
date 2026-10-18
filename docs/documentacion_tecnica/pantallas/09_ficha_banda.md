@@ -4,7 +4,7 @@
 |---|---|
 | **Ruta** | `GET /banda/<uuid:banda_id>` + acciones POST |
 | **Acceso** | Lectura pública. Edición: propietario o comisario de la campaña (ADM siempre) |
-| **Vista** | `app/bandas.py` (`ver`, `pdf`, `editar`, `contratar`, `editar_miembro`, `despedir`) |
+| **Vista** | `app/bandas.py` (`ver`, `pdf`, `excel`, `editar`, `contratar`, `editar_miembro`, `eliminar_miembro`) |
 | **Plantilla** | `app/templates/banda.html` |
 | **Mockup** | `docs/material_base/03_banda_gestor_generico.png` |
 
@@ -32,7 +32,7 @@ Tabla de miembros **en plantilla** (Activo o Lesionado):
 
 Orden · Nombre (+ distintivo «Lesionado») · Tipo · Categoría · Cant. · **una columna por stat del reglamento**
 (en mayúsculas y en el orden escrito) · Armamento (`nombre (precio)`) · Exp. · Coste (y `×n = total` si cantidad > 1) ·
-Notas (+ observaciones) · acciones **Editar** y **Despedir**.
+Notas (+ observaciones) · acciones **Editar** y **Duplicar**. (No hay botón «Despedir»: el estado se cambia en el popup.)
 
 Las columnas de stats salen de `reglas.regla_stats_especificos`, ordenadas con `regla_info.orden_stats`
 (`helpers.definicion_stats` + `helpers.columnas_stats`).
@@ -58,14 +58,25 @@ Botón **+ Contratar miembro** o **Editar** abren el mismo popup `#modal-miembro
 Inserta en `bandas_lin` (estado 0), descuenta `coste × cantidad` de la tesorería, anota
 «Contrata «X» (Tipo) ×n por T [equipo: …] · tesorería A → B» y recalcula el valor. Todo en una transacción.
 
-### Editar — `POST /banda/<id>/miembro/<lid>/editar`
-Actualiza la línea. Detecta y anota cambios (nombre, tipo, cantidad, coste, experiencia, estado, stats,
-**compra** / **retira** de equipo por nombre, notas). **Cobra la subida** del coste de la línea
-(`coste × cantidad` nuevo − anterior) si el miembro sigue en plantilla; las bajadas no se reembolsan solas.
+### Duplicar
+Abre el mismo popup en modo «Duplicar miembro» con los datos del miembro (tipo, categoría, cantidad, precio,
+stats, armamento, experiencia), nombre «… (copia)», orden siguiente y **sin notas**. El botón «Contratar copia»
+envía a `contratar`, así que cobra como una contratación normal (el aviso lo indica).
 
-### Despedir — `POST /banda/<id>/miembro/<lid>/despedir`
-Confirmación en el navegador → estado `2` (Despedido), anota «Despide a «X» (Tipo)», recalcula el valor.
-Si ya estaba despedido (doble clic), no hace nada: ««X» ya estaba despedido.»
+### Editar — `POST /banda/<id>/miembro/<lid>/editar`
+Actualiza la línea. Detecta y anota cambios (nombre, tipo, categoría, cantidad, coste, experiencia, estado, stats,
+**compra** / **retira** de equipo por nombre, notas).
+
+- **Dinero**: si el miembro está en plantilla antes y después, **se cobra la subida** y **se devuelve la bajada**
+  del coste de la línea (`coste × cantidad`). El popup lo avisa en vivo («se descontarán N» / «se devolverán N»).
+  Cambiar de estado no mueve dinero.
+- **Muerto**: al pasar a Muerto, las notas se sustituyen por `Muerto: dd/mm/aa`; las anteriores se guardan en el
+  historial («notas anteriores: «…»»).
+
+### Eliminar — `POST /banda/<id>/miembro/<lid>/eliminar`
+Botón rojo «Eliminar miembro» dentro del popup de edición (solo en modo editar), con confirmación del navegador.
+Borra la línea **sin devolver** su coste, anota «Elimina «X» (Tipo) ×n, estado E, coste C · sin devolución» y
+recalcula el valor. Si ya no existe (doble clic), avisa «Ese miembro ya no existe.»
 
 ### Protección contra doble clic
 Todas las acciones de esta pantalla bloquean la banda (`SELECT … FOR UPDATE`) mientras se procesan, y los cobros se restan en una sola sentencia SQL. Un doble clic o dos usuarios a la vez nunca cobran dos veces ni pisan la tesorería. En el navegador, cada formulario solo se envía una vez.
@@ -77,7 +88,15 @@ Miembros Despedidos o Muertos, con la misma tabla. Se pueden editar (p. ej. corr
 Líneas de `banda_audit`, la más reciente primero: `dd/mm/aaaa hh:mm · Usuario · acción`.
 Abierto por defecto si tiene 5 líneas o menos.
 
-## 6. Botón «📄 Generar PDF»
+## 6. Botones «📄 Generar PDF» y «📊 Exportar Excel»
+
+**Excel** — `GET /banda/<id>/excel` (`bandas.excel`), descarga `banda_<nombre>.xlsx` generado con openpyxl en
+`app/excel.py` (`build_banda_xlsx`). Una hoja «Ficha» con el mismo contenido que el PDF: título, datos de la banda
+(tesorería y coste como números), observaciones, tabla de miembros y de bajas (Nº, Nombre, Tipo, Categoría, Cant.,
+una columna por stat, Armamento, Exp., Coste unit., Coste total, Estado, Notas, Observaciones) y pie con la fecha.
+**Sin historial.** Anchos de columna ajustados al contenido e impresión apaisada a una página de ancho.
+
+**PDF**
 Junto a «Volver a campaña». Abre en una pestaña nueva `GET /banda/<id>/pdf` (`bandas.pdf`), con el mismo
 acceso que la ficha (público). Usa la misma carga de datos que la pantalla (`_ficha`), así que el PDF muestra
 exactamente lo mismo. Generado con reportlab en `app/pdf.py` (`build_banda_pdf`), **A4 apaisado**:
@@ -88,7 +107,6 @@ exactamente lo mismo. Generado con reportlab en `app/pdf.py` (`build_banda_pdf`)
 - «Miembros de la banda (n)»: Nº, Nombre, Tipo, Categoría, Cant., **una columna por stat**, Armamento, Exp., Coste
   (`xN = total`), Estado, Notas (+ observaciones). Cabecera gris oscura, filas alternas.
 - «Bajas: despedidos y muertos (n)» con la misma tabla, si hay.
-- «Historial (n)» completo, el más reciente primero.
 - Pie en cada página: título del gestor · banda · fecha de generación y «Página N».
 
 Detalles técnicos:

@@ -24,7 +24,7 @@ stats tiene un miembro de banda.
 
 ## 2. Stack y restricciones
 
-- Python 3.12, **Flask 3.0.3**, **psycopg2-binary 2.9.9**, python-dotenv 1.0.1, **reportlab 5.0.0** (PDF). Sin ORM: SQL parametrizado.
+- Python 3.12, **Flask 3.0.3**, **psycopg2-binary 2.9.9**, python-dotenv 1.0.1, **reportlab 5.0.0** (PDF), **openpyxl 3.1.5** (Excel), tzdata. Sin ORM: SQL parametrizado.
 - PostgreSQL (Neon). UUID como claves (`gen_random_uuid()`), JSONB para datos variables.
 - Plantillas Jinja2 + CSS propio + JavaScript básico (sin frameworks de frontend).
 - Despliegue en Vercel con `@vercel/python` (serverless): **no hay disco persistente** y cada petición abre
@@ -38,7 +38,7 @@ stats tiene un miembro de banda.
 api/index.py         Entrada Vercel (Anexo C: incluye corrección de ruta)
 wsgi.py              Entrada local (puerto 5001)
 vercel.json          (Anexo D)
-requirements.txt     Flask==3.0.3, psycopg2-binary==2.9.9, python-dotenv==1.0.1, reportlab==5.0.0
+requirements.txt     Flask==3.0.3, psycopg2-binary==2.9.9, python-dotenv==1.0.1, reportlab==5.0.0, tzdata==2025.2, openpyxl==3.1.5
 .env.example         SECRET_KEY=, DATABASE_URL=, APP_NAME=
 .gitignore           __pycache__, .venv, .env, .env.* (salvo .env.example), .vercel, *.pdf
 .vercelignore        .venv .env .env.* .claude db docs wsgi.py *.md *.pdf
@@ -47,7 +47,7 @@ app/config.py        SECRET_KEY (o aleatoria), DATABASE_URL, APP_NAME
 app/db.py            (Anexo B)
 app/helpers.py       decoradores, permisos, estados, stats, filtro info, a_entero
 app/servicios.py     anotar_historial, recalcular_valor, historial
-app/auth.py | public.py | dashboard.py | campanas.py | bandas.py | batallas.py | admin.py | pdf.py
+app/auth.py | public.py | dashboard.py | campanas.py | bandas.py | batallas.py | admin.py | pdf.py | excel.py
 app/templates/       base.html, index, campana, estadisticas, batallas, acta, perfil,
                      gestion_campanas, banda_nueva, banda, legal, auth/{login,register,recuperar,restablecer},
                      admin/{reglamentos,notificaciones}
@@ -117,11 +117,15 @@ Crea las tablas exactamente como en el **Anexo A**. Resumen de relaciones:
    (al editar = coste − Σ armamento).
 4. **Valor de banda** = Σ `coste × cantidad` de miembros en estado 0 o 1. Recalcular tras cada cambio de miembros.
 5. **Contratar**: inserta (estado 0) y descuenta `coste × cantidad` de la tesorería.
-6. **Editar miembro**: cobra solo el incremento `coste×cantidad nuevo − anterior` si es > 0 y el miembro sigue en
-   plantilla. Retirar equipo no reembolsa. Detecta equipo comprado/retirado comparando listas de nombres (multiconjunto).
-7. **Despedir**: estado 2.
+6. **Editar miembro**: si está en plantilla antes y después, `dif = coste×cantidad nuevo − anterior`: si > 0 se cobra,
+   si < 0 se **devuelve** («devolución N»). Los cambios de estado no mueven dinero. Detecta equipo comprado/retirado
+   comparando listas de nombres (multiconjunto). Al pasar a **Muerto** (3): notas = `Muerto: dd/mm/aa` (hora de
+   España) y las notas anteriores se anotan en el historial.
+7. **Estado y eliminar**: el estado solo se cambia en el popup de edición (no hay botón Despedir). **Eliminar**
+   (`POST /banda/<id>/miembro/<lid>/eliminar`, con confirm) borra la línea **sin devolución**, anota y recalcula;
+   idempotente. **Duplicar** = abrir el popup de contratar con los datos de otro miembro (nombre «… (copia)», sin notas).
 8. **Tesorería**: siempre editable a mano (puede quedar negativa con aviso). Los cobros se hacen en una sola sentencia (`SET banda_tesoreria = banda_tesoreria - x RETURNING banda_tesoreria`).
-8b. **Concurrencia**: toda operación que modifica una banda empieza con `SELECT 1 FROM bandas WHERE banda_id=%s FOR UPDATE`. En `base.html`, cada formulario POST se envía una sola vez (marca `data-enviando`; desactiva botones con `setTimeout(…,0)` para conservar el valor del botón pulsado; reactiva en `pageshow`). Despedir es idempotente.
+8b. **Concurrencia**: toda operación que modifica una banda empieza con `SELECT 1 FROM bandas WHERE banda_id=%s FOR UPDATE`. En `base.html`, cada formulario POST se envía una sola vez (marca `data-enviando`; desactiva botones con `setTimeout(…,0)` para conservar el valor del botón pulsado; reactiva en `pageshow`). Eliminar es idempotente.
 8c. **Categoría del miembro**: `banda_lin_categoria` varchar(50) opcional, texto libre con `<datalist>` («Héroe», «Secuaz» + usadas); columna en la ficha y en el PDF; cambios al historial.
 9. **Historial** (`bandas.banda_audit`, texto): cada acción añade
    `to_char(now() AT TIME ZONE 'Europe/Madrid','DD/MM/YYYY HH24:MI') || ' · ' || usuario || ' · ' || texto || '\n'`.
@@ -171,11 +175,12 @@ Crea las tablas exactamente como en el **Anexo A**. Resumen de relaciones:
 | POST `/campana/<id>/contactar` | campanas.contactar_comisario | público | Regla 15 |
 | GET/POST `/banda/nueva` | bandas.nueva | login | Regla 2 |
 | GET `/banda/<id>` | bandas.ver | público | Ficha (sección 9) |
-| GET `/banda/<id>/pdf` | bandas.pdf | público | PDF A4 apaisado de la ficha (sección 9.3, punto 5) |
+| GET `/banda/<id>/pdf` | bandas.pdf | público | PDF A4 apaisado de la ficha, sin historial (sección 9.3, punto 5) |
+| GET `/banda/<id>/excel` | bandas.excel | público | Excel .xlsx con el mismo contenido que el PDF (sección 9.3, punto 6) |
 | POST `/banda/<id>/editar` | bandas.editar | propietario/COM | Nombre, tipo, tesorería, estado, observaciones + historial |
 | POST `/banda/<id>/contratar` | bandas.contratar | propietario/COM | Reglas 3-5, 9 |
 | POST `/banda/<id>/miembro/<lid>/editar` | bandas.editar_miembro | propietario/COM | Regla 6 |
-| POST `/banda/<id>/miembro/<lid>/despedir` | bandas.despedir | propietario/COM | Regla 7 |
+| POST `/banda/<id>/miembro/<lid>/eliminar` | bandas.eliminar_miembro | propietario/COM | Regla 7 |
 | POST `/campana/<id>/batallas/crear` | batallas.crear | ver regla 11 | → acta |
 | GET/POST `/batalla/<id>/acta` | batallas.acta | lectura pública | `accion` = guardar / anadir / quitar:<bb_id> / confirmar / reabrir / eliminar |
 | GET `/admin/reglamentos` | admin.reglamentos | ADM | Listado + popup |
@@ -208,7 +213,7 @@ tablas blancas con cabecera gris en mayúsculas pequeñas; contenedor máx. 1100
 1. Datos con **edición in situ**: botón «Editar datos» alterna una clase `.editando` que oculta la vista y muestra
    el formulario (nombre, tipo, tesorería, estado, observaciones).
 2. Tabla de miembros en plantilla: Orden, Nombre (+Lesionado), Tipo, Cant., **una columna por stat** (mayúsculas,
-   orden de `orden_stats`), Armamento `nombre (precio)`, Exp., Coste (`×n = total`), Notas, Editar / Despedir (con confirm).
+   orden de `orden_stats`), Armamento `nombre (precio)`, Exp., Coste (`×n = total`), Notas, Editar / Duplicar.
 3. **Popup de miembro** compartido para contratar y editar (cambia `action`, título y botón):
    orden (siguiente libre), nombre, tipo, categoría, cantidad, precio base, stats (`stat_0…`, `type=number` si el valor por
    defecto es número; precargados con el valor por defecto o el actual), filas dinámicas de armamento
@@ -218,8 +223,12 @@ tablas blancas con cabecera gris en mayúsculas pequeñas; contenedor máx. 1100
 4. Plegable «Bajas (n)» y plegable «Historial (n)».
 5. Botón **📄 Generar PDF** (pestaña nueva): con reportlab, A4 apaisado — título, tabla de datos, observaciones,
    miembros (una columna por stat, ancho medido con `stringWidth` de la palabra más larga, `_` → espacio),
-   bajas, historial completo y pie con fecha y nº de página. Helvetica no tiene «→»: sustituir por «->».
+   bajas (sin historial) y pie con fecha y nº de página. Helvetica no tiene «→»: sustituir por «->».
    Nombre de archivo ASCII (`unicodedata.normalize('NFKD')`).
+6. Botón **📊 Exportar Excel**: openpyxl, hoja «Ficha» con título, datos (números como números), observaciones,
+   miembros y bajas (columnas extra «Coste unit.» y «Coste total»), sin historial; descarga `banda_<nombre>.xlsx`.
+7. Popup de edición: botón rojo «Eliminar miembro» (`formaction` a la ruta de eliminar, `formnovalidate`, confirm);
+   el aviso en vivo muestra también «se devolverán N» cuando baja el coste.
 
 ### 9.4 Otras pantallas
 Ver la tabla de rutas. Gestión de campañas en rejilla de dos columnas (Bloque 1 | Bloque 2) y Bloque 3 debajo.
@@ -253,7 +262,10 @@ Con usuarios ADM, Gestor (STD que crea la campaña), Jugador1 y Jugador2:
 - [ ] Editar añadiendo Escudo 5 → tesorería 365; historial con «compra Escudo», «cargo 5», «tesorería 370 → 365».
 - [ ] Tesorería editada a mano a 400 → historial «(edición manual)».
 - [ ] Jugador2 y el Gestor (sin modo comisario) reciben 403 al editar la banda de Jugador1.
-- [ ] Despedir el grupo → estado 2, valor 54; la ficha muestra «Bajas (1)».
+- [ ] Pasar el grupo a Despedido desde editar → estado 2, valor 54, tesorería sin cambios; «Bajas (1)».
+- [ ] Quitar un equipo de 10 → «devolución 10» y tesorería + coste = gastado; pasar a Muerto → notas «Muerto: dd/mm/aa».
+- [ ] Eliminar un miembro → desaparece, sin devolución; Duplicar → contrata la copia y cobra.
+- [ ] PDF y Excel se generan y no incluyen el historial.
 - [ ] Columnas de stats en orden `M HA HP F R H I A L`; Battlefleet guarda `{"velocidad":20,"giros":"90°","blindaje":6}`.
 - [ ] Gestor cambia estado a Abierta; un jugador recibe 403. Gestor activa modo comisario → aparece el aviso y puede editar.
 - [ ] Jugador1 crea batalla (su banda vinculada), vincula a Jugador2, guarda ganancias 60, ganador y bajas; la tesorería no cambia.
@@ -264,7 +276,7 @@ Con usuarios ADM, Gestor (STD que crea la campaña), Jugador1 y Jugador2:
 - [ ] Suplente (inscrito) puede activar el modo comisario pero no cambiar el suplente.
 - [ ] Bloque 3 visible solo al ADM; un reglamento en uso no se puede borrar; la copia SQL incluye `batallas_bandas`.
 - [ ] El registro redirige a `/`; `/salud` responde `ok`.
-- [ ] Dos ediciones simultáneas que añaden una Espada (10) → un solo cargo; cinco contrataciones simultáneas de 20 → tesorería exacta (−100) e historial encadenado; doble despedir → una sola línea.
+- [ ] Dos ediciones simultáneas que añaden una Espada (10) → un solo cargo; cinco contrataciones simultáneas de 20 → tesorería exacta (−100) e historial encadenado; doble eliminar → una sola línea.
 - [ ] Tres clics seguidos en «Enviar» del contacto → un único mensaje.
 
 ---
@@ -575,6 +587,8 @@ Flask==3.0.3
 psycopg2-binary==2.9.9
 python-dotenv==1.0.1
 reportlab==5.0.0
+tzdata==2025.2
+openpyxl==3.1.5
 ```
 
 ## Anexo E · Servicios de historial y valor (`app/servicios.py`)

@@ -91,8 +91,8 @@ def _tabla_miembros(lineas, stats, estados, st):
     return t
 
 
-def build_banda_pdf(b, plantilla, bajas, stats, historial, estados_banda, estados_miembro, app_name):
-    """PDF de la ficha de banda: datos, miembros en plantilla, bajas e historial."""
+def build_banda_pdf(b, plantilla, bajas, stats, estados_banda, estados_miembro, app_name):
+    """PDF de la ficha de banda: datos, miembros en plantilla y bajas (sin historial)."""
     buf = BytesIO()
     generado = ahora_es().strftime("%d/%m/%Y %H:%M")
 
@@ -116,7 +116,6 @@ def build_banda_pdf(b, plantilla, bajas, stats, historial, estados_banda, estado
         "normal": ParagraphStyle("normal", parent=base["Normal"], fontSize=9, leading=11),
         "celda": ParagraphStyle("celda", parent=base["Normal"], fontSize=7.5, leading=9),
         "cab": ParagraphStyle("cab", parent=base["Normal"], fontSize=6, leading=7, textColor=colors.white),
-        "hist": ParagraphStyle("hist", parent=base["Normal"], fontSize=7.5, leading=9.5),
     }
 
     estado_banda = estados_banda.get(b["banda_estado"], b["banda_estado"])
@@ -158,12 +157,6 @@ def build_banda_pdf(b, plantilla, bajas, stats, historial, estados_banda, estado
     if bajas:
         story.append(Paragraph(f"Bajas: despedidos y muertos ({len(bajas)})", st["h2"]))
         story.append(_tabla_miembros(bajas, stats, estados_miembro, st))
-
-    story.append(Paragraph(f"Historial ({len(historial)})", st["h2"]))
-    if historial:
-        story += [Paragraph(_esc(h), st["hist"]) for h in historial]
-    else:
-        story.append(Paragraph("Sin acciones registradas.", st["normal"]))
 
     doc.build(story, onFirstPage=pie, onLaterPages=pie)
     return buf.getvalue()

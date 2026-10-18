@@ -398,3 +398,4 @@ form[inert] { opacity: .7; }
   background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; }
 .historial li { padding: .35rem .6rem; border-bottom: 1px solid var(--line); }
 .historial li:last-child { border-bottom: none; }
+.acciones-popup { justify-content: space-between; flex-wrap: wrap; }

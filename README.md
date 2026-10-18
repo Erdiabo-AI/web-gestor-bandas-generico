@@ -20,7 +20,7 @@ app/
   public.py         Main, campaña (clasificación), batallas, estadísticas, legal, contacto
   dashboard.py      Perfil: Mis campañas, Mis bandas, Mis datos
   campanas.py       Gestión de campañas, modo comisario, suplente, mensajes al comisario
-  bandas.py         Nueva banda, ficha, edición in situ, contratar / editar / despedir miembros
+  bandas.py         Nueva banda, ficha, edición in situ, contratar / duplicar / editar / eliminar miembros, PDF y Excel
   batallas.py       Crear batalla y acta (informativa: borrador / confirmada)
   admin.py          Reglamentos, notificaciones, enlace de recuperación, copia BBDD
   templates/ static/
