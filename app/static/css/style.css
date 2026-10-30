@@ -399,3 +399,16 @@ form[inert] { opacity: .7; }
 .historial li { padding: .35rem .6rem; border-bottom: 1px solid var(--line); }
 .historial li:last-child { border-bottom: none; }
 .acciones-popup { justify-content: space-between; flex-wrap: wrap; }
+
+/* Ficha de banda: miembros en dos líneas (perfil de stats debajo) */
+.tabla tbody.miembro.dos-lineas tr:first-child td { border-bottom: none; }
+.tabla tbody.miembro.dos-lineas { border-bottom: 2px solid var(--line); }
+.tabla tbody.miembro.dos-lineas:nth-of-type(even) td { background: #fafafa; }
+.tabla tr.fila-perfil td { padding-top: 0; }
+.tabla tbody.fila-baja td { color: var(--muted); }
+.perfil { display: flex; flex-wrap: wrap; gap: .3rem; }
+.perfil-stat { display: flex; flex-direction: column; align-items: center; min-width: 3.2rem;
+  border: 1px solid var(--line); border-radius: .35rem; overflow: hidden; background: var(--surface); }
+.perfil-lbl { width: 100%; text-align: center; font-size: .62rem; font-weight: 700; letter-spacing: .02em;
+  color: #3f3f46; background: #e5e7eb; padding: .1rem .35rem; white-space: nowrap; }
+.perfil-val { font-weight: 700; padding: .15rem .35rem; }

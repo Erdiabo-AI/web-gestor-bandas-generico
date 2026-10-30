@@ -161,10 +161,11 @@ def pdf(banda_id):
     """Ficha de banda en PDF, sin historial (mismo acceso que la ficha: público)."""
     from flask import current_app, send_file
     from io import BytesIO
-    from .pdf import build_banda_pdf
+    from .pdf import build_banda_pdf, usar_dos_lineas
     b, _lineas, _defs, stats, plantilla, bajas = _ficha(banda_id)
     contenido = build_banda_pdf(b, plantilla, bajas, stats, ESTADOS_BANDA, ESTADOS_MIEMBRO,
-                                current_app.config["APP_NAME"])
+                                current_app.config["APP_NAME"],
+                                dos_lineas=usar_dos_lineas(stats, b["regla_info"]))
     return send_file(BytesIO(contenido), mimetype="application/pdf", as_attachment=False,
                      download_name=_nombre_archivo(b, ".pdf"))
 
@@ -185,6 +186,7 @@ def excel(banda_id):
 
 @bp.route("/banda/<uuid:banda_id>")
 def ver(banda_id):
+    from .pdf import usar_dos_lineas
     b, lineas, defs, stats, plantilla, bajas = _ficha(banda_id)
     # Datos para el popup de edición (se serializan con |tojson en la plantilla)
     miembros = {str(ln["banda_lin_id"]): {
@@ -204,6 +206,7 @@ def ver(banda_id):
         siguiente_orden=siguiente_orden, historial=historial(b["banda_audit"]),
         puede_editar=puede_editar_banda(b, session.get("user")),
         estados_banda=ESTADOS_BANDA, estados_miembro=ESTADOS_MIEMBRO,
+        dos_lineas=usar_dos_lineas(stats, b["regla_info"]),   # misma decisión que el PDF
     )
 
 

@@ -37,6 +37,11 @@ Notas (+ observaciones) · acciones **Editar** y **Duplicar**. (No hay botón «
 Las columnas de stats salen de `reglas.regla_stats_especificos`, ordenadas con `regla_info.orden_stats`
 (`helpers.definicion_stats` + `helpers.columnas_stats`).
 
+**Disposición en dos líneas.** Si el reglamento lo indica (o en automático, cuando los stats no caben bien), la
+tabla no tiene columnas de stats: cada miembro es un `<tbody class="miembro dos-lineas">` con dos filas, la de
+datos y debajo `tr.fila-perfil` con el perfil (`.perfil-stat`: etiqueta en gris encima y valor en negrita).
+El Nº y la columna de acciones ocupan las dos filas. En «auto» se mide el ancho real de las etiquetas de stats (`pdf.ancho_stat`, Helvetica-Bold 6 pt); si suman más de 90 mm se usan dos líneas. Con tus reglamentos: Mordheim (81 mm) → una línea; Punkapocalyptic (90 mm, justo en el límite), Battlefleet (94 mm) y Aeronautica (120 mm) → dos líneas.
+
 ## 3. Popup de miembro (contratar / editar)
 Botón **+ Contratar miembro** o **Editar** abren el mismo popup `#modal-miembro`:
 
@@ -108,6 +113,7 @@ exactamente lo mismo. Generado con reportlab en `app/pdf.py` (`build_banda_pdf`)
   (`xN = total`), Estado, Notas (+ observaciones). Cabecera gris oscura, filas alternas.
 - «Bajas: despedidos y muertos (n)» con la misma tabla, si hay.
 - Pie en cada página: título del gestor · banda · fecha de generación y «Página N».
+- En **dos líneas** (misma decisión que la pantalla): fila de datos y debajo una mini tabla del perfil (etiquetas encima, valores debajo), el Nº ocupa ambas filas, filas alternas por miembro y cada bloque con `NOSPLIT` para que no se corte entre páginas (unos 8 miembros por página).
 
 Detalles técnicos:
 - Las columnas de stats se dimensionan **midiendo el ancho real** de su palabra más larga

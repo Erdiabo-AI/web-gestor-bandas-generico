@@ -75,8 +75,9 @@ Crea las tablas exactamente como en el **Anexo A**. Resumen de relaciones:
 ### 4.2 Formatos JSON
 - `reglas.regla_stats_especificos`: objeto `{"stat": valor_por_defecto}`. Ej. Mordheim
   `{"m":4,"ha":4,"hp":3,"f":3,"r":3,"h":1,"i":4,"a":1,"l":7}`; Battlefleet `{"velocidad":20,"giros":"45°","blindaje":5}`.
-- `reglas.regla_info`: `{"orden_stats": ["m","ha",…]}`. **Obligatorio**: `jsonb` reordena las claves por
-  longitud; guarda el orden escrito al crear/editar y úsalo al mostrar columnas.
+- `reglas.regla_info`: `{"orden_stats": ["m","ha",…], "disposicion_stats": "auto"}`. **Obligatorio**: `jsonb` reordena
+  las claves por longitud; guarda el orden escrito al crear/editar y úsalo al mostrar columnas.
+  `disposicion_stats` ∈ `auto`/`una`/`dos` (desplegable en Reglamentos).
 - `bandas_lin.banda_lin_stats`: objeto con las claves del reglamento. Convierte cada valor al tipo del valor por
   defecto (int, float, bool o texto ≤ 50).
 - `bandas_lin.banda_lin_armamento`: lista `[{"nombre": str, "precio": int}]` (admite repetidos).
@@ -184,7 +185,7 @@ Crea las tablas exactamente como en el **Anexo A**. Resumen de relaciones:
 | POST `/campana/<id>/batallas/crear` | batallas.crear | ver regla 11 | → acta |
 | GET/POST `/batalla/<id>/acta` | batallas.acta | lectura pública | `accion` = guardar / anadir / quitar:<bb_id> / confirmar / reabrir / eliminar |
 | GET `/admin/reglamentos` | admin.reglamentos | ADM | Listado + popup |
-| POST `/admin/reglamentos/guardar` | admin.reglamento_guardar | ADM | Valida objeto JSON; guarda `orden_stats` |
+| POST `/admin/reglamentos/guardar` | admin.reglamento_guardar | ADM | Valida objeto JSON; guarda `orden_stats` y `disposicion_stats` |
 | POST `/admin/reglamentos/<id>/borrar` | admin.reglamento_borrar | ADM | Solo si ninguna campaña lo usa |
 | GET `/admin/notificaciones` (+ `/<nid>/leida`, `/<nid>/borrar`, `/leidas`) | admin.* | ADM | Solo `campana_id IS NULL` |
 | POST `/admin/usuarios/<id>/reset` | admin.generar_reset | ADM | Regla 16; vuelve a Gestión de campañas `#bloque-3` |
@@ -221,6 +222,11 @@ tablas blancas con cabecera gris en mayúsculas pequeñas; contenedor máx. 1100
    aviso «se descontarán N de la tesorería» (nuevo: total; edición: total − total inicial si > 0), experiencia,
    estado (solo editar), notas, observaciones.
 4. Plegable «Bajas (n)» y plegable «Historial (n)».
+4b. **Disposición de stats** (`usar_dos_lineas(stats, regla_info)`, compartida con el PDF): `una` → columnas;
+   `dos` → cada miembro es un `<tbody>` con fila de datos (Nº y acciones con `rowspan=2`) y fila de perfil
+   (`colspan=8`, etiqueta encima y valor debajo); `auto` → dos líneas si Σ `stringWidth` de la palabra más larga
+   de cada etiqueta (Helvetica-Bold 6 pt) + márgenes > 90 mm. En el PDF, dos líneas = fila de datos + fila con
+   una mini tabla del perfil (`SPAN`, `NOSPLIT`). Excel: siempre una columna por stat.
 5. Botón **📄 Generar PDF** (pestaña nueva): con reportlab, A4 apaisado — título, tabla de datos, observaciones,
    miembros (una columna por stat, ancho medido con `stringWidth` de la palabra más larga, `_` → espacio),
    bajas (sin historial) y pie con fecha y nº de página. Helvetica no tiene «→»: sustituir por «->».
@@ -266,6 +272,8 @@ Con usuarios ADM, Gestor (STD que crea la campaña), Jugador1 y Jugador2:
 - [ ] Quitar un equipo de 10 → «devolución 10» y tesorería + coste = gastado; pasar a Muerto → notas «Muerto: dd/mm/aa».
 - [ ] Eliminar un miembro → desaparece, sin devolución; Duplicar → contrata la copia y cobra.
 - [ ] PDF y Excel se generan y no incluyen el historial.
+- [ ] Disposición automática: Mordheim (9 stats cortos) en una línea; Aeronautica y Battlefleet en dos líneas, en
+      ficha y PDF; forzar «una»/«dos» desde Reglamentos cambia ambas; un valor no válido se guarda como `auto`.
 - [ ] Columnas de stats en orden `M HA HP F R H I A L`; Battlefleet guarda `{"velocidad":20,"giros":"90°","blindaje":6}`.
 - [ ] Gestor cambia estado a Abierta; un jugador recibe 403. Gestor activa modo comisario → aparece el aviso y puede editar.
 - [ ] Jugador1 crea batalla (su banda vinculada), vincula a Jugador2, guarda ganancias 60, ganador y bajas; la tesorería no cambia.

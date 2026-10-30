@@ -13,7 +13,7 @@ Definir los juegos. Es lo que hace **genérico** al gestor: cada reglamento indi
 
 ## Listado
 Juego · Año · Versión · Stats de un miembro (en el orden escrito) · Observaciones · Nº de campañas que lo usan ·
-**Editar** · **Eliminar** (solo si ninguna campaña lo usa). Botones **+ Nuevo reglamento** y **← Volver al perfil**.
+**Editar** · **Eliminar** (solo si ninguna campaña lo usa). Si la disposición no es automática, se indica con un distintivo («Una línea» / «Dos líneas») bajo los stats. Botones **+ Nuevo reglamento** y **← Volver al perfil**.
 
 ## Popup alta / edición
 | Campo | Reglas | Destino |
@@ -22,6 +22,7 @@ Juego · Año · Versión · Stats de un miembro (en el orden escrito) · Observ
 | Año de creación | Obligatorio, entero | `regla_anyo` |
 | Versión | Obligatorio, máx. 50 | `regla_version` |
 | Observaciones | Opcional, máx. 255 | `regla_observaciones` |
+| Disposición de los stats | Automática (por defecto) · Siempre una línea · Siempre dos líneas | `regla_info.disposicion_stats` (`auto` / `una` / `dos`; un valor no válido se guarda como `auto`) |
 | Stats de un miembro (JSON) | Debe ser un **objeto JSON** `{…}` o vacío | `regla_stats_especificos` |
 
 Ejemplos:
@@ -34,7 +35,7 @@ Ejemplos:
 
 ## Detalle técnico: orden de las claves
 `jsonb` reordena las claves. Al guardar se añade `regla_info.orden_stats` con la lista de claves en el
-orden escrito (`regla_info = COALESCE(regla_info,'{}') || {"orden_stats": […]}` al editar), y al leer
+orden escrito, junto con la disposición (`regla_info = COALESCE(regla_info,'{}') || {"orden_stats": […], "disposicion_stats": …}` al editar, sin perder otras claves), y al leer
 `helpers.definicion_stats()` reconstruye el orden. El popup recibe los datos con `{{ datos|tojson }}`.
 
 ## Validaciones y mensajes

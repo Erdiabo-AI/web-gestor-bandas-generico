@@ -26,6 +26,7 @@ app/
   templates/ static/
 db/schema.sql       Esquema completo de la BBDD (instalación desde cero)
 db/migracion_*.sql  Migraciones aplicadas sobre la BBDD existente
+tests/              Pruebas automáticas: .venv\Scripts\python tests\ejecutar_todo.py (datos temporales @e2e.test)
 docs/PENDIENTES.md  Decisiones tomadas, interpretaciones y pendientes
 docs/documentacion_tecnica/  Documento técnico, una ficha por pantalla y guía de replicación para IA
 material_base/      Mockups y SQL original (no se despliega)

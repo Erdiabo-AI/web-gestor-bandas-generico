@@ -9,6 +9,7 @@ from psycopg2.extras import Json
 from . import db
 from .auth import hash_token
 from .helpers import admin_required, a_entero, definicion_stats, ahora_es
+from .pdf import DISPOSICIONES
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -30,6 +31,7 @@ def reglamentos():
     datos = {str(r["regla_id"]): {
         "descripcion": r["regla_descripcion"], "anyo": r["regla_anyo"],
         "version": r["regla_version"], "observaciones": r["regla_observaciones"] or "",
+        "disposicion": (r["regla_info"] or {}).get("disposicion_stats", "auto"),
         "stats": json.dumps(r["stats_ordenados"] or {},
                             ensure_ascii=False),
     } for r in filas}
@@ -64,10 +66,12 @@ def reglamento_guardar():
         flash(f"El JSON de stats no es válido ({e}). Ejemplo: "
               '{"m": 4, "ha": 4, "hp": 3}', "danger")
         return redirect(url_for("admin.reglamentos"))
-    # jsonb reordena las claves: el orden escrito se guarda en regla_info
+    disposicion = f.get("disposicion") if f.get("disposicion") in DISPOSICIONES else "auto"
+    # jsonb reordena las claves: el orden escrito se guarda en regla_info, junto con
+    # la disposición de los stats en la ficha y el PDF (auto / una / dos líneas)
     valores = (anyo, descripcion, version,
                (f.get("observaciones") or "").strip()[:255] or None, Json(stats),
-               Json({"orden_stats": list(stats)}))
+               Json({"orden_stats": list(stats), "disposicion_stats": disposicion}))
     if rid:
         db.execute(
             """UPDATE reglas SET regla_anyo=%s, regla_descripcion=%s, regla_version=%s,

@@ -75,7 +75,8 @@ JaumeP_gestorgenerico/
 │   └── static/css/style.css
 ├── db/
 │   ├── schema.sql          Esquema completo (instalación desde cero)
-│   └── migracion_2026-10-18_base.sql   Migración aplicada sobre la BBDD original
+│   └── migracion_*.sql     Migraciones aplicadas sobre la BBDD existente
+├── tests/                  Pruebas automáticas (ejecutar_todo.py); no se despliegan
 └── docs/
     ├── PENDIENTES.md       Decisiones funcionales e interpretaciones
     ├── documentacion_tecnica/   (esta carpeta)
@@ -169,7 +170,7 @@ notificaciones n───1 campanas (mensaje al comisario, opcional)
 
 | Tabla | Contenido | Campos clave |
 |---|---|---|
-| `reglas` | Reglamentos (juegos) | `regla_descripcion` (nombre del juego), `regla_anyo`, `regla_version`, `regla_stats_especificos` (JSON de stats), `regla_info` (`orden_stats`) |
+| `reglas` | Reglamentos (juegos) | `regla_descripcion` (nombre del juego), `regla_anyo`, `regla_version`, `regla_stats_especificos` (JSON de stats), `regla_info` (`orden_stats`, `disposicion_stats`) |
 | `usuarios` | Cuentas | `usuario_email` (único), `usuario_password_hash`, `usuario_rol` (STD/ADM), `reset_*` |
 | `campanas` | Campañas | `regla_id`, `campana_estado`, `campana_tesoreria_inicial`, `usuarios_gestor_id`, `usuarios_gestor_suplente_id` |
 | `campanas_usuarios` | Inscripción usuario ↔ campaña | único (`campana_id`, `usuario_id`) |
@@ -197,7 +198,7 @@ Están centralizados en `app/helpers.py` (`ESTADOS_CAMPANA`, `ESTADOS_BANDA`, `E
 | Campo | Formato | Ejemplo |
 |---|---|---|
 | `reglas.regla_stats_especificos` | Objeto: claves = columnas de stats; valores = valor por defecto (su tipo número/texto define el tipo del campo) | `{"m": 4, "ha": 4, "hp": 3, "f": 3, "r": 3, "h": 1, "i": 4, "a": 1, "l": 7}` · `{"velocidad": 20, "giros": "45°", "blindaje": 5}` |
-| `reglas.regla_info` | `{"orden_stats": [claves en el orden escrito]}` | `{"orden_stats": ["m","ha","hp","f","r","h","i","a","l"]}` |
+| `reglas.regla_info` | `{"orden_stats": [claves en el orden escrito], "disposicion_stats": "auto"\|"una"\|"dos"}` | `{"orden_stats": ["m","ha",…], "disposicion_stats": "auto"}` |
 | `bandas_lin.banda_lin_stats` | Objeto con las mismas claves del reglamento | `{"m": 4, "ha": 4, …}` |
 | `bandas_lin.banda_lin_armamento` | Lista de objetos (admite repetidos y campos extra) | `[{"nombre":"Espada","precio":10},{"nombre":"Daga","precio":2},{"nombre":"Daga","precio":2}]` |
 | `batallas_bandas.batalla_banda_info` | `{"bajas": "texto libre"}` | `{"bajas": "Hans (lisiado)"}` |
@@ -285,6 +286,19 @@ El modo comisario se guarda en `session["com"]` (lista de ids de campaña) y se 
 - **Eliminar** es idempotente: si el miembro ya no existe (doble clic), no hace nada.
 - Probado con peticiones en paralelo: doble compra → un solo cargo; cinco contrataciones a la vez → tesorería exacta.
 
+### 8.3.2 Disposición de los stats (una o dos líneas)
+Cada reglamento elige cómo se muestran los stats en la **ficha** y en el **PDF**
+(`regla_info.disposicion_stats`, desplegable en Reglamentos):
+
+- **Una línea**: una columna por stat (lo habitual con pocos stats cortos, p. ej. Mordheim).
+- **Dos líneas**: cada miembro ocupa un bloque; arriba sus datos y debajo su **perfil de stats** a todo el
+  ancho (etiqueta encima, valor debajo). En el PDF el Nº ocupa las dos filas y el bloque nunca se parte entre
+  páginas (`NOSPLIT`).
+- **Automática** (por defecto): En «auto» se mide el ancho real de las etiquetas de stats (`pdf.ancho_stat`, Helvetica-Bold 6 pt); si suman más de 90 mm se usan dos líneas. Con tus reglamentos: Mordheim (81 mm) → una línea; Punkapocalyptic (90 mm, justo en el límite), Battlefleet (94 mm) y Aeronautica (120 mm) → dos líneas.
+
+La decisión está en `pdf.usar_dos_lineas()` y la usan la ficha y el PDF, así que siempre coinciden. El Excel
+mantiene siempre una columna por stat (no tiene límite de ancho y así se puede filtrar).
+
 ### 8.4 Batallas y actas
 - Las actas son **informativas**: no modifican tesorería, miembros ni valor de las bandas.
 - Crear una batalla: participante con banda activa (se vincula su banda) o comisario. Orden = máximo + 1,
@@ -365,12 +379,21 @@ El puerto 5001 evita el choque con BellviBowl (5000).
 
 ---
 
-## 12. Pruebas realizadas
+## 12. Pruebas
 
-- **Prueba de punta a punta** con el cliente de pruebas de Flask y cuatro usuarios (ADM, gestor, dos jugadores):
-  64 comprobaciones de reglas de negocio y permisos (cobros, historial, una banda activa, modo comisario,
-  actas, estadísticas, mensajes, suplente, reglamentos, copia de seguridad). Los datos se crean con dominio
-  `@e2e.test` y se borran al terminar.
+Carpeta `tests/` (excluida del despliegue). Se ejecutan todas con:
+```
+.venv\Scripts\python tests\ejecutar_todo.py
+```
+| Batería | Qué comprueba |
+|---|---|
+| `test_general.py` | Punta a punta con ADM, gestor y dos jugadores: reglamentos, campañas, bandas, cobros, historial, una banda activa, modo comisario, actas, estadísticas, mensajes, suplente, copia de seguridad |
+| `test_miembros.py` | Devolución al bajar coste, nota de muerte, duplicar, eliminar sin devolución, Excel y PDF |
+| `test_concurrencia.py` | Peticiones simultáneas: un solo cargo, tesorería exacta, historial encadenado; categoría |
+| `test_dos_lineas.py` | Disposición de stats automática y forzada en ficha y PDF (Aeronautica, Battlefleet, Mordheim) |
+
+Usan la BBDD de `.env` con datos temporales (usuarios `@e2e.test`, campañas «… E2E») que se borran al
+terminar, también si una prueba falla. Nunca tocan otros datos.
 - **Navegador:** popups de miembro (coste en vivo, filas de armamento, aviso de cobro), edición in situ,
   popup de reglamentos; sin errores de JavaScript.
 - **Producción:** `/salud`, todas las rutas públicas, redirecciones a login y 404.

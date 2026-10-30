@@ -12,3 +12,4 @@ wsgi.py
 *.pdf
 *.docx
 *.zip
+tests
